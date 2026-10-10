@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电商智能客服 Agent</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="topbar-logo">🤖</div>
+    <div class="topbar-main">
+      <div class="topbar-title">电商智能客服 Agent</div>
+      <div class="topbar-sub">
+        <span><span class="status-dot" id="statusDot"></span><span id="statusText">连接中…</span></span>
+        <span id="storageInfo"></span>
+      </div>
+    </div>
+    <button class="btn-new" onclick="newSession()">＋ 新会话</button>
+  </div>
+
+  <div id="humanBanner">⚠️ 检测到您需要人工服务，正在为您转接人工客服，请稍候…</div>
+
+  <div id="chatBox">
+    <div id="welcome">
+      <h2>👋 您好，我是电商智能客服</h2>
+      <p>支持订单查询、物流跟踪、退换货、发票、账户等咨询，还能识别您的情绪哦</p>
+      <div class="quick-asks">
+        <span class="quick-ask" onclick="quickAsk(this)">我的订单什么时候发货？</span>
+        <span class="quick-ask" onclick="quickAsk(this)">运费怎么算？满多少包邮？</span>
+        <span class="quick-ask" onclick="quickAsk(this)">怎么退货退款？</span>
+        <span class="quick-ask" onclick="quickAsk(this)">发票怎么开？</span>
+        <span class="quick-ask" onclick="quickAsk(this)">忘记密码了怎么办？</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-wrap">
+      <textarea id="msgInput" rows="1" placeholder="请输入您的问题，回车发送…"
+        onkeydown="onKeyDown(event)" oninput="autoGrow(this)"></textarea>
+      <button id="sendBtn" onclick="sendMessage()">➤</button>
+    </div>
+    <div class="input-hint">Enter 发送 · Shift+Enter 换行</div>
+  </div>
+
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

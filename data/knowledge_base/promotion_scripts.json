@@ -1,0 +1,133 @@
+[
+  {
+    "id": "script_001",
+    "scene": "预热",
+    "template": "【预售开启】{name}正在参加{activity}活动，{time}开抢！现在付定金{deposit}元可抵{final}元，还有赠品相送哦～",
+    "variables": [
+      "name",
+      "activity",
+      "time",
+      "deposit",
+      "final"
+    ]
+  },
+  {
+    "id": "script_002",
+    "scene": "预热",
+    "template": "双11预售来啦！{name}定金翻倍，前{limit}名下单额外赠送{gift}，手慢无～",
+    "variables": [
+      "name",
+      "limit",
+      "gift"
+    ]
+  },
+  {
+    "id": "script_003",
+    "scene": "开售",
+    "template": "【{name}】双11到手价仅{price}元！（原价{original_price}元）满减+优惠券可叠加，限时抢购中！",
+    "variables": [
+      "name",
+      "price",
+      "original_price"
+    ]
+  },
+  {
+    "id": "script_004",
+    "scene": "开售",
+    "template": "大促开启！{name}全场{discount}折起，叠加跨店满减，买越多省越多！",
+    "variables": [
+      "name",
+      "discount"
+    ]
+  },
+  {
+    "id": "script_005",
+    "scene": "催付",
+    "template": "您购买的{name}还未付款哦～预售商品付尾款仅剩{time}小时，逾期定金不退！",
+    "variables": [
+      "name",
+      "time"
+    ]
+  },
+  {
+    "id": "script_006",
+    "scene": "催付",
+    "template": "亲爱的，您购物车里的{name}即将售罄！现在下单还可享受{voucher}优惠～",
+    "variables": [
+      "name",
+      "voucher"
+    ]
+  },
+  {
+    "id": "script_007",
+    "scene": "发货",
+    "template": "您的订单{order_id}已发货！{express}快递，单号{tracking}，预计{eta}送达～",
+    "variables": [
+      "order_id",
+      "express",
+      "tracking",
+      "eta"
+    ]
+  },
+  {
+    "id": "script_008",
+    "scene": "发货",
+    "template": "大促期间发货量较大，您的订单{order_id}预计{eta}内发出，感谢耐心等待！",
+    "variables": [
+      "order_id",
+      "eta"
+    ]
+  },
+  {
+    "id": "script_009",
+    "scene": "售后",
+    "template": "{name}支持7天无理由退换货，拆封后如不满意可在签收后7天内申请退货，运费由我们承担！",
+    "variables": [
+      "name"
+    ]
+  },
+  {
+    "id": "script_010",
+    "scene": "售后",
+    "template": "大促期间售后订单较多，我们会在{time}小时内为您处理，请耐心等待～",
+    "variables": [
+      "time"
+    ]
+  },
+  {
+    "id": "script_011",
+    "scene": "售后",
+    "emotion_type": "angry",
+    "template": "非常理解您的心情，给您带来不便深表歉意。我们已优先处理您的问题，客服专员将在{time}内联系您，请保持手机畅通。",
+    "variables": [
+      "time"
+    ]
+  },
+  {
+    "id": "script_012",
+    "scene": "售后",
+    "emotion_type": "angry",
+    "template": "实在抱歉让您有不好的体验！我已经为您加急处理，同时赠送您一张{voucher}作为补偿，希望您能继续支持我们。",
+    "variables": [
+      "voucher"
+    ]
+  },
+  {
+    "id": "script_013",
+    "scene": "售后",
+    "emotion_type": "anxious",
+    "template": "请您放心，您的订单我们已经加急处理了。目前仓库正在打包中，预计今天{time}点前发出，我们会持续跟进～",
+    "variables": [
+      "time"
+    ]
+  },
+  {
+    "id": "script_014",
+    "scene": "发货",
+    "emotion_type": "anxious",
+    "template": "理解您的心情！您的订单{order_id}已经安排加急发货，快递公司会优先派送，请放心等待～",
+    "variables": [
+      "order_id"
+    ]
+  }
+]

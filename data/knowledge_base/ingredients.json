@@ -1,0 +1,257 @@
+[
+  {
+    "id": "ing_001",
+    "name": "玻尿酸",
+    "name_en": "Hyaluronic Acid",
+    "category": "保湿",
+    "efficacy": [
+      "强效保湿",
+      "锁水",
+      "填充细纹",
+      "促进修复"
+    ],
+    "suitable_skin_types": [
+      "dry",
+      "normal",
+      "combination"
+    ],
+    "unsuitable_skin_types": [],
+    "safety_level": 5,
+    "description": "天然保湿因子，能吸收自身重量1000倍的水分，是顶级保湿成分"
+  },
+  {
+    "id": "ing_002",
+    "name": "烟酰胺",
+    "name_en": "Niacinamide",
+    "category": "美白",
+    "efficacy": [
+      "美白淡斑",
+      "控油",
+      "缩小毛孔",
+      "抗炎",
+      "修复屏障"
+    ],
+    "suitable_skin_types": [
+      "oily",
+      "combination",
+      "normal"
+    ],
+    "unsuitable_skin_types": [
+      "sensitive"
+    ],
+    "safety_level": 4,
+    "description": "维生素B3衍生物，多效合一，能阻断黑色素转移，改善肤色不均"
+  },
+  {
+    "id": "ing_003",
+    "name": "视黄醇",
+    "name_en": "Retinol",
+    "category": "抗衰老",
+    "efficacy": [
+      "抗皱",
+      "促进细胞更新",
+      "淡化细纹",
+      "改善肤质",
+      "收缩毛孔"
+    ],
+    "suitable_skin_types": [
+      "oily",
+      "normal",
+      "combination"
+    ],
+    "unsuitable_skin_types": [
+      "sensitive"
+    ],
+    "safety_level": 3,
+    "description": "维生素A衍生物，黄金抗老成分，能促进胶原蛋白生成，孕妇禁用"
+  },
+  {
+    "id": "ing_004",
+    "name": "维生素C",
+    "name_en": "Vitamin C / Ascorbic Acid",
+    "category": "美白",
+    "efficacy": [
+      "美白",
+      "抗氧化",
+      "提亮肤色",
+      "促进胶原合成",
+      "淡化痘印"
+    ],
+    "suitable_skin_types": [
+      "normal",
+      "oily",
+      "combination"
+    ],
+    "unsuitable_skin_types": [
+      "sensitive"
+    ],
+    "safety_level": 4,
+    "description": "强效抗氧化剂，能抑制黑色素生成，提亮肤色，需避光保存"
+  },
+  {
+    "id": "ing_005",
+    "name": "神经酰胺",
+    "name_en": "Ceramide",
+    "category": "修复",
+    "efficacy": [
+      "修复屏障",
+      "保湿",
+      "舒缓",
+      "增强皮肤抵抗力"
+    ],
+    "suitable_skin_types": [
+      "dry",
+      "sensitive",
+      "normal"
+    ],
+    "unsuitable_skin_types": [],
+    "safety_level": 5,
+    "description": "皮肤屏障的重要组成部分，能修复受损屏障，增强保湿力"
+  },
+  {
+    "id": "ing_006",
+    "name": "水杨酸",
+    "name_en": "Salicylic Acid / BHA",
+    "category": "祛痘",
+    "efficacy": [
+      "祛痘",
+      "去黑头",
+      "疏通毛孔",
+      "去角质",
+      "控油"
+    ],
+    "suitable_skin_types": [
+      "oily",
+      "combination"
+    ],
+    "unsuitable_skin_types": [
+      "sensitive",
+      "dry"
+    ],
+    "safety_level": 3,
+    "description": "脂溶性酸类，能深入毛孔溶解油脂，疏通堵塞，适合痘痘肌"
+  },
+  {
+    "id": "ing_007",
+    "name": "果酸",
+    "name_en": "AHA / Glycolic Acid",
+    "category": "祛痘",
+    "efficacy": [
+      "去角质",
+      "改善暗沉",
+      "淡化细纹",
+      "提亮肤色"
+    ],
+    "suitable_skin_types": [
+      "oily",
+      "normal",
+      "combination"
+    ],
+    "unsuitable_skin_types": [
+      "sensitive"
+    ],
+    "safety_level": 3,
+    "description": "水溶性酸类，能促进角质代谢，改善粗糙暗沉，需建立耐受"
+  },
+  {
+    "id": "ing_008",
+    "name": "角鲨烷",
+    "name_en": "Squalane",
+    "category": "保湿",
+    "efficacy": [
+      "保湿",
+      "修复",
+      "抗氧化",
+      "软化皮肤"
+    ],
+    "suitable_skin_types": [
+      "dry",
+      "sensitive",
+      "normal"
+    ],
+    "unsuitable_skin_types": [],
+    "safety_level": 5,
+    "description": "与人体皮脂相似的成分，滋润不油腻，敏感肌友好"
+  },
+  {
+    "id": "ing_009",
+    "name": "肽类",
+    "name_en": "Peptides",
+    "category": "抗衰老",
+    "efficacy": [
+      "抗皱",
+      "紧致",
+      "促进修复",
+      "提升弹性"
+    ],
+    "suitable_skin_types": [
+      "normal",
+      "dry",
+      "combination"
+    ],
+    "unsuitable_skin_types": [],
+    "safety_level": 5,
+    "description": "信号肽能刺激胶原蛋白生成，多肽能放松表情纹，温和抗老"
+  },
+  {
+    "id": "ing_010",
+    "name": "积雪草",
+    "name_en": "Centella Asiatica",
+    "category": "修复",
+    "efficacy": [
+      "舒缓修复",
+      "抗炎",
+      "促进愈合",
+      "淡化疤痕"
+    ],
+    "suitable_skin_types": [
+      "sensitive",
+      "dry",
+      "normal"
+    ],
+    "unsuitable_skin_types": [],
+    "safety_level": 5,
+    "description": "天然修复成分，能舒缓泛红，促进伤口愈合，敏感肌救星"
+  },
+  {
+    "id": "ing_011",
+    "name": "熊果苷",
+    "name_en": "Arbutin",
+    "category": "美白",
+    "efficacy": [
+      "美白淡斑",
+      "抑制黑色素",
+      "均匀肤色"
+    ],
+    "suitable_skin_types": [
+      "normal",
+      "oily",
+      "combination"
+    ],
+    "unsuitable_skin_types": [
+      "sensitive"
+    ],
+    "safety_level": 4,
+    "description": "天然美白成分，能抑制酪氨酸酶活性，温和不刺激"
+  },
+  {
+    "id": "ing_012",
+    "name": "玻色因",
+    "name_en": "Pro-Xylane",
+    "category": "抗衰老",
+    "efficacy": [
+      "抗皱",
+      "紧致",
+      "促进胶原生成",
+      "提升弹性"
+    ],
+    "suitable_skin_types": [
+      "normal",
+      "dry",
+      "combination"
+    ],
+    "unsuitable_skin_types": [],
+    "safety_level": 5,
+    "description": "促进糖胺聚糖生成，从根源抗衰，温和适合长期使用"
+  }
+]

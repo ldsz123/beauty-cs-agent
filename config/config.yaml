@@ -1,0 +1,77 @@
+# 电商智能客服Agent 配置文件
+
+app:
+  name: "电商智能客服Agent"
+  version: "1.0.0"
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+
+# LLM 配置
+llm:
+  provider: "openai"  # openai / anthropic / qwen / doubao
+  api_key: "${LLM_API_KEY}"
+  base_url: "${LLM_BASE_URL:-https://api.openai.com/v1}"
+  model: "gpt-4o"
+  temperature: 0.7
+  max_tokens: 2048
+  timeout: 30
+
+  # 视觉模型（图理解）
+  vision:
+    provider: "openai"
+    model: "gpt-4o"
+    api_key: "${LLM_API_KEY}"
+
+# 数据库配置
+database:
+  url: "${DATABASE_URL:-postgresql://user:pass@localhost:5432/cs_agent}"
+  pool_size: 20
+  max_overflow: 10
+
+# Redis 配置
+redis:
+  url: "${REDIS_URL:-redis://localhost:6379}"
+  db: 0
+  max_connections: 50
+
+# 向量数据库配置
+milvus:
+  host: "${MILVUS_HOST:-localhost}"
+  port: 19530
+  collection: "ecommerce_kb"
+
+# 嵌入模型配置
+embedding:
+  model: "text-embedding-3-small"
+  dimension: 1536
+  api_key: "${LLM_API_KEY}"
+
+# 会话配置
+session:
+  ttl: 3600  # 会话过期时间（秒）
+  max_history: 20  # 最大历史消息数
+  unresolved_threshold: 3  # 连续未解决阈值（触发转人工）
+
+# 情感识别配置
+emotion:
+  lexicon_path: "config/emotion_lexicon.json"
+  rule_weight: 0.3  # 规则引擎权重
+  llm_weight: 0.7   # LLM 权重
+  escalation_intensity: 3  # 达到此强度转人工
+
+# 知识库配置
+knowledge_base:
+  top_k: 5
+  cache_ttl: 300
+  collections:
+    - "products"
+    - "faq"
+    - "policies"
+    - "promotions"
+
+# 监控配置
+monitoring:
+  enable_metrics: true
+  log_level: "INFO"
+  sentry_dsn: "${SENTRY_DSN:-}"

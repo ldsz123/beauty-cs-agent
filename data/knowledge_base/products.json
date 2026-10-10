@@ -1,0 +1,359 @@
+[
+  {
+    "id": "prod_001",
+    "name": "小棕瓶修护精华",
+    "brand": "Estee Lauder",
+    "category": "护肤",
+    "subcategory": "精华",
+    "price": 850.0,
+    "original_price": 1080.0,
+    "description": "夜间修护精华，淡化细纹，提升肌肤光泽",
+    "ingredients": [
+      "二裂酵母",
+      "透明质酸钠",
+      "咖啡因",
+      "角鲨烷"
+    ],
+    "suitable_skin_types": [
+      "dry",
+      "normal",
+      "combination"
+    ],
+    "usage": "晚间洁面后取3-5滴均匀涂抹于面部",
+    "specifications": {
+      "volume": "50ml",
+      "shelf_life": "3年"
+    },
+    "stock": 500,
+    "sales_count": 12000,
+    "rating": 4.8,
+    "tags": [
+      "修护",
+      "抗老",
+      "精华",
+      "夜间使用"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_002",
+    "name": "神仙水精华露",
+    "brand": "SK-II",
+    "category": "护肤",
+    "subcategory": "精华水",
+    "price": 1299.0,
+    "original_price": 1540.0,
+    "description": "90%以上PITERA精华，调节肌肤自然机能",
+    "ingredients": [
+      "PITERA",
+      "丁二醇",
+      "戊二醇",
+      "水"
+    ],
+    "suitable_skin_types": [
+      "oily",
+      "combination",
+      "normal"
+    ],
+    "usage": "洁面后取适量于化妆棉上，轻拍于面部",
+    "specifications": {
+      "volume": "230ml",
+      "shelf_life": "3年"
+    },
+    "stock": 300,
+    "sales_count": 25000,
+    "rating": 4.9,
+    "tags": [
+      "精华水",
+      "调理",
+      "PITERA",
+      "油皮亲妈"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_003",
+    "name": "红腰子精华",
+    "brand": "CPB",
+    "category": "护肤",
+    "subcategory": "精华",
+    "price": 1280.0,
+    "original_price": 1480.0,
+    "description": "强化肌肤免疫力，提升肌肤自我修护能力",
+    "ingredients": [
+      "透明质酸",
+      "银杏提取物",
+      "水溶性胶原蛋白"
+    ],
+    "suitable_skin_types": [
+      "dry",
+      "normal",
+      "combination"
+    ],
+    "usage": "早晚洁面后，取4-5泵均匀涂抹于面部",
+    "specifications": {
+      "volume": "50ml",
+      "shelf_life": "3年"
+    },
+    "stock": 200,
+    "sales_count": 8000,
+    "rating": 4.7,
+    "tags": [
+      "修护",
+      "精华",
+      "提升免疫力"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_004",
+    "name": "小灯泡美白精华",
+    "brand": "SK-II",
+    "category": "护肤",
+    "subcategory": "精华",
+    "price": 1540.0,
+    "original_price": 1800.0,
+    "description": "高效美白淡斑，提亮肤色，改善暗沉",
+    "ingredients": [
+      "PITERA",
+      "烟酰胺",
+      "抗坏血酸葡糖苷",
+      "十一碳烯酰基苯丙氨酸"
+    ],
+    "suitable_skin_types": [
+      "normal",
+      "oily",
+      "combination"
+    ],
+    "usage": "早晚洁面后取2-3滴涂抹于面部",
+    "specifications": {
+      "volume": "50ml",
+      "shelf_life": "3年"
+    },
+    "stock": 350,
+    "sales_count": 18000,
+    "rating": 4.8,
+    "tags": [
+      "美白",
+      "淡斑",
+      "提亮",
+      "精华"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_005",
+    "name": "高保湿面霜",
+    "brand": "Kiehl's",
+    "category": "护肤",
+    "subcategory": "面霜",
+    "price": 315.0,
+    "original_price": 340.0,
+    "description": "24小时长效保湿，极地滋养配方",
+    "ingredients": [
+      "角鲨烷",
+      "冰川保护蛋白",
+      "神经酰胺",
+      "甘油"
+    ],
+    "suitable_skin_types": [
+      "dry",
+      "normal",
+      "sensitive"
+    ],
+    "usage": "早晚洁面后取适量均匀涂抹于面部",
+    "specifications": {
+      "volume": "50ml",
+      "shelf_life": "3年"
+    },
+    "stock": 800,
+    "sales_count": 30000,
+    "rating": 4.6,
+    "tags": [
+      "保湿",
+      "面霜",
+      "干皮救星"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_006",
+    "name": "小白瓶防晒",
+    "brand": "OLAY",
+    "category": "护肤",
+    "subcategory": "防晒",
+    "price": 199.0,
+    "original_price": 249.0,
+    "description": "SPF50+高倍防晒，清爽不油腻",
+    "ingredients": [
+      "烟酰胺",
+      "Octinoxate",
+      "Tinosorb S",
+      "维生素E"
+    ],
+    "suitable_skin_types": [
+      "oily",
+      "combination",
+      "normal"
+    ],
+    "usage": "出门前15分钟均匀涂抹于暴露部位",
+    "specifications": {
+      "volume": "40ml",
+      "spf": "PA++++",
+      "shelf_life": "3年"
+    },
+    "stock": 1000,
+    "sales_count": 50000,
+    "rating": 4.5,
+    "tags": [
+      "防晒",
+      "清爽",
+      "SPF50+"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_007",
+    "name": "持妆粉底液",
+    "brand": "Estee Lauder",
+    "category": "彩妆",
+    "subcategory": "粉底",
+    "price": 420.0,
+    "original_price": 480.0,
+    "description": "24小时持妆，油皮亲妈粉底液",
+    "ingredients": [
+      "二氧化硅",
+      "聚二甲基硅氧烷",
+      "水",
+      "色粉"
+    ],
+    "suitable_skin_types": [
+      "oily",
+      "combination"
+    ],
+    "usage": "取适量于手背，用美妆蛋或粉底刷均匀涂抹",
+    "specifications": {
+      "volume": "30ml",
+      "shade": "#1C0",
+      "shelf_life": "3年"
+    },
+    "stock": 600,
+    "sales_count": 20000,
+    "rating": 4.7,
+    "tags": [
+      "粉底",
+      "持妆",
+      "油皮"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_008",
+    "name": "哑光唇釉 #999",
+    "brand": "Dior",
+    "category": "彩妆",
+    "subcategory": "口红",
+    "price": 350.0,
+    "original_price": 380.0,
+    "description": "经典正红色，显白显气质",
+    "ingredients": [
+      "聚二甲基硅氧烷",
+      "三山嵛醇柠檬酸酯",
+      "CI 15850"
+    ],
+    "suitable_skin_types": [
+      "normal",
+      "oily",
+      "combination",
+      "dry"
+    ],
+    "usage": "直接涂抹于唇部，或使用唇刷勾勒唇形",
+    "specifications": {
+      "volume": "6ml",
+      "shade": "#999",
+      "shelf_life": "3年"
+    },
+    "stock": 400,
+    "sales_count": 15000,
+    "rating": 4.8,
+    "tags": [
+      "口红",
+      "正红色",
+      "哑光",
+      "经典"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_009",
+    "name": "玻尿酸补水面膜",
+    "brand": "PMPM",
+    "category": "护肤",
+    "subcategory": "面膜",
+    "price": 89.0,
+    "original_price": 129.0,
+    "description": "三重玻尿酸，深层补水保湿",
+    "ingredients": [
+      "透明质酸钠",
+      "泛醇",
+      "积雪草提取物",
+      "甘油"
+    ],
+    "suitable_skin_types": [
+      "dry",
+      "normal",
+      "sensitive",
+      "combination"
+    ],
+    "usage": "洁面后敷15-20分钟，取下面膜轻拍至吸收",
+    "specifications": {
+      "pieces": "10片/盒",
+      "shelf_life": "3年"
+    },
+    "stock": 2000,
+    "sales_count": 80000,
+    "rating": 4.5,
+    "tags": [
+      "面膜",
+      "补水",
+      "玻尿酸",
+      "平价"
+    ],
+    "status": "active"
+  },
+  {
+    "id": "prod_010",
+    "name": "修护精华液",
+    "brand": "Lancôme",
+    "category": "护肤",
+    "subcategory": "精华",
+    "price": 760.0,
+    "original_price": 880.0,
+    "description": "维稳修护，强韧肌肤屏障",
+    "ingredients": [
+      "二裂酵母",
+      "透明质酸",
+      "烟酰胺",
+      "维生素E"
+    ],
+    "suitable_skin_types": [
+      "sensitive",
+      "dry",
+      "normal"
+    ],
+    "usage": "早晚洁面后取2-3滴均匀涂抹",
+    "specifications": {
+      "volume": "30ml",
+      "shelf_life": "3年"
+    },
+    "stock": 450,
+    "sales_count": 16000,
+    "rating": 4.7,
+    "tags": [
+      "修护",
+      "维稳",
+      "精华"
+    ],
+    "status": "active"
+  }
+]

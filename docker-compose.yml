@@ -1,0 +1,73 @@
+# 电商智能客服Agent — Docker Compose
+version: '3.8'
+
+services:
+  # ====== API 服务 ======
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o}
+      - DATABASE_URL=postgresql+asyncpg://cs_user:${DB_PASSWORD}@postgres:5432/cs_agent
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - SESSION_MODE=redis
+      - KB_MODE=redis
+      - CONFIG_PATH=config/config.yaml
+    volumes:
+      - ./config:/app/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ====== Redis（缓存） ======
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ====== PostgreSQL + pgvector（数据库） ======
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: cs_agent
+      POSTGRES_USER: cs_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./scripts/pg_init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cs_user -d cs_agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:
+  pg_data:
