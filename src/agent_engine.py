@@ -2,6 +2,7 @@
 电商智能客服 Agent 核心引擎
 编排三级处理流水线，实现深度理解
 """
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Optional, AsyncGenerator
@@ -132,6 +133,12 @@ class CustomerServiceAgent:
 
         # 知识库管理（切片/版本/回滚）
         self.kb_manager = KBManager(knowledge_base=self.knowledge_base)
+
+        # 是否将情感+意图+实体三级分析合并为单次 LLM 调用（降低延迟）
+        self.combined_analysis = (
+            config.get("llm_client") is not None
+            and os.environ.get("LLM_COMBINED_ANALYSIS", "true").lower() == "true"
+        )
         
         logger.info(f"CustomerServiceAgent initialized "
                     f"(session_mode={config.get('session_mode', 'memory')}, "
@@ -151,70 +158,91 @@ class CustomerServiceAgent:
         # 开始链路记录
         trace_id = self.trace_recorder.start_trace(session_id, user_message)
 
-        # ========== 第一级：情感识别 ==========
-        t0 = time.time()
-        emotion_result = await self.emotion_layer.analyze(
-            user_message,
-            conversation_history=session.history
-        )
-        self.trace_recorder.record_node(
-            trace_id, "emotion",
-            input_summary={"message": user_message[:100]},
-            output_summary={
-                "emotion": emotion_result.emotion.value,
-                "intensity": emotion_result.intensity.value,
-                "confidence": round(emotion_result.confidence, 3),
-                "triggers": emotion_result.triggers,
-            },
-            duration_ms=int((time.time() - t0) * 1000),
-        )
-        logger.debug(f"Emotion: {emotion_result.emotion.value} (intensity={emotion_result.intensity.value})")
-
-        # ========== 第二级：语义分类 ==========
-        t0 = time.time()
-        semantic_result = await self.semantic_layer.classify(
-            user_message,
-            emotion_result=emotion_result,
-            conversation_context=session.context
-        )
-        self.trace_recorder.record_node(
-            trace_id, "semantic",
-            input_summary={"message": user_message[:100], "emotion": emotion_result.emotion.value},
-            output_summary={
-                "intent": semantic_result.primary_intent.value,
-                "confidence": round(semantic_result.confidence, 3),
-                "urgency": semantic_result.urgency.value,
-            },
-            duration_ms=int((time.time() - t0) * 1000),
-        )
-        logger.debug(f"Intent: {semantic_result.primary_intent.value} (confidence={semantic_result.confidence:.2f})")
-
-        # ========== 第三级：实体提取 ==========
+        # 图片理解（如有）
         image_info = None
         if image_data:
             image_info_obj = await self.vision_module.understand(image_data, context=user_message)
             if image_info_obj:
                 image_info = image_info_obj.__dict__
 
+        # ========== 三级分析（合并模式：单次 LLM 调用 / 否则串行三级） ==========
+        use_combined = self.combined_analysis and not image_data
         t0 = time.time()
-        entities = await self.entity_layer.extract(
-            user_message,
-            intent=semantic_result.primary_intent,
-            image_info=image_info
-        )
-        self.trace_recorder.record_node(
-            trace_id, "entity",
-            input_summary={"message": user_message[:100], "has_image": image_data is not None},
-            output_summary={
-                "order_id": entities.order_id,
-                "tracking_number": entities.tracking_number,
-                "product_name": entities.product_name,
-                "phone": entities.phone,
-                "amount": entities.amount,
-            },
-            duration_ms=int((time.time() - t0) * 1000),
-        )
-        logger.debug(f"Entities: order_id={entities.order_id}, product={entities.product_name}")
+
+        if use_combined:
+            try:
+                emotion_result, semantic_result, entities = await self._analyze_combined(
+                    user_message, session
+                )
+                self.trace_recorder.record_node(
+                    trace_id, "analysis_combined",
+                    input_summary={"message": user_message[:100], "mode": "combined"},
+                    output_summary={
+                        "emotion": emotion_result.emotion.value,
+                        "intensity": emotion_result.intensity.value,
+                        "intent": semantic_result.primary_intent.value,
+                        "urgency": semantic_result.urgency.value,
+                        "order_id": entities.order_id,
+                    },
+                    duration_ms=int((time.time() - t0) * 1000),
+                )
+            except Exception as e:
+                logger.warning(f"Combined analysis failed, falling back to 3-layer: {e}")
+                use_combined = False
+
+        if not use_combined:
+            # ========== 第一级：情感识别 ==========
+            t0 = time.time()
+            emotion_result = await self.emotion_layer.analyze(
+                user_message, conversation_history=session.history
+            )
+            self.trace_recorder.record_node(
+                trace_id, "emotion",
+                input_summary={"message": user_message[:100]},
+                output_summary={
+                    "emotion": emotion_result.emotion.value,
+                    "intensity": emotion_result.intensity.value,
+                    "confidence": round(emotion_result.confidence, 3),
+                },
+                duration_ms=int((time.time() - t0) * 1000),
+            )
+
+            # ========== 第二级：语义分类 ==========
+            t0 = time.time()
+            semantic_result = await self.semantic_layer.classify(
+                user_message, emotion_result=emotion_result,
+                conversation_context=session.context
+            )
+            self.trace_recorder.record_node(
+                trace_id, "semantic",
+                input_summary={"message": user_message[:100], "emotion": emotion_result.emotion.value},
+                output_summary={
+                    "intent": semantic_result.primary_intent.value,
+                    "confidence": round(semantic_result.confidence, 3),
+                    "urgency": semantic_result.urgency.value,
+                },
+                duration_ms=int((time.time() - t0) * 1000),
+            )
+
+            # ========== 第三级：实体提取 ==========
+            t0 = time.time()
+            entities = await self.entity_layer.extract(
+                user_message, intent=semantic_result.primary_intent,
+                image_info=image_info
+            )
+            self.trace_recorder.record_node(
+                trace_id, "entity",
+                input_summary={"message": user_message[:100], "has_image": image_data is not None},
+                output_summary={
+                    "order_id": entities.order_id,
+                    "tracking_number": entities.tracking_number,
+                    "phone": entities.phone,
+                },
+                duration_ms=int((time.time() - t0) * 1000),
+            )
+
+        logger.debug(f"Emotion={emotion_result.emotion.value} Intent={semantic_result.primary_intent.value} "
+                     f"Entities(order_id={entities.order_id})")
 
         # ========== 业务动作执行 ==========
         t0 = time.time()
@@ -339,6 +367,89 @@ class CustomerServiceAgent:
             trace_id=trace_id,
         )
     
+    async def _analyze_combined(self, user_message, session):
+        """
+        单次 LLM 调用完成 情感 + 意图 + 实体 分析（降低延迟）
+        失败时抛出异常，由调用方回退到三级流水线
+        """
+        prompt = f"""你是电商客服分析专家。请一次性分析用户消息，输出JSON。
+
+用户消息：{user_message}
+
+请分析三个维度：
+
+1. 情感（emotion）：
+   - type: angry(愤怒)/anxious(焦虑)/dissatisfied(不满)/neutral(中性)/satisfied(满意)/urgent(紧急)/grateful(感激)
+   - intensity: 1-4（4最强）
+   - confidence: 0-1
+
+2. 意图（intent）：
+   - primary: product_inquiry(商品咨询)/price_inquiry(价格)/promotion_inquiry(促销)/comparison(对比)/order_status(订单查询)/order_modify(订单修改)/payment_issue(支付问题)/shipping_inquiry(物流查询)/return_refund(退货退款)/exchange(换货)/complaint(投诉)/warranty(保修)/account_issue(账户问题)/tech_support(技术支持)/general_chat(闲聊)/escalate(转人工)
+   - confidence: 0-1
+   - urgency: low/medium/high/critical
+
+3. 实体（entities）：order_id, tracking_number, product_name, phone, amount, quantity, issue_type（未找到填 null）
+
+严格返回以下JSON格式（不要多余文字）：
+{{"emotion":{{"type":"neutral","intensity":1,"confidence":0.8}},"intent":{{"primary":"general_chat","confidence":0.8,"urgency":"low"}},"entities":{{"order_id":null,"tracking_number":null,"product_name":null,"phone":null,"amount":null,"quantity":null,"issue_type":null}}}}"""
+
+        result = await self.config["llm_client"].chat(prompt, response_format="json")
+
+        # ---- 解析情感 ----
+        emo = result.get("emotion", {}) or {}
+        emo_type_str = emo.get("type", "neutral")
+        try:
+            emotion_type = EmotionType(emo_type_str)
+        except ValueError:
+            emotion_type = EmotionType.NEUTRAL
+        try:
+            intensity = EmotionIntensity(min(4, max(1, int(emo.get("intensity", 1)))))
+        except (ValueError, TypeError):
+            intensity = EmotionIntensity.LOW
+        emotion_result = EmotionResult(
+            emotion=emotion_type,
+            intensity=intensity,
+            confidence=float(emo.get("confidence", 0.6) or 0.6),
+            triggers=[],
+            need_human=(emotion_type == EmotionType.ANGRY and intensity.value >= 3),
+        )
+
+        # ---- 解析意图 ----
+        it = result.get("intent", {}) or {}
+        try:
+            intent_type = IntentType(it.get("primary", "general_chat"))
+        except ValueError:
+            intent_type = IntentType.GENERAL_CHAT
+        try:
+            urgency = UrgencyLevel(it.get("urgency", "low"))
+        except ValueError:
+            urgency = UrgencyLevel.LOW
+        semantic_result = SemanticResult(
+            primary_intent=intent_type,
+            confidence=float(it.get("confidence", 0.6) or 0.6),
+            urgency=urgency,
+        )
+        # 情感影响紧急度
+        semantic_result.urgency = self.semantic_layer._adjust_urgency(urgency, emotion_result)
+
+        # ---- 解析实体（LLM + 正则合并） ----
+        ent = result.get("entities", {}) or {}
+        regex_entities = self.entity_layer._regex_extract(user_message)
+        merged = {**{k: v for k, v in ent.items() if v}, **regex_entities}
+        entities = ExtractedEntities(
+            order_id=merged.get("order_id"),
+            tracking_number=merged.get("tracking_number"),
+            product_name=merged.get("product_name"),
+            phone=merged.get("phone"),
+            amount=merged.get("amount"),
+            quantity=merged.get("quantity"),
+            issue_type=merged.get("issue_type"),
+            raw_entities=merged,
+            confidence=min(0.95, 0.5 + 0.1 * len([v for v in merged.values() if v])),
+        )
+
+        return emotion_result, semantic_result, entities
+
     async def _generate_response(self, user_message, emotion, semantic,
                                   entities, actions, kb_context, session,
                                   beauty_recommendations=None,
@@ -379,7 +490,7 @@ class CustomerServiceAgent:
 2. 针对用户意图给出具体解决方案
 3. 如需用户补充信息，清晰列出
 4. 语气专业、友好、简洁
-5. 中文回复，直接输出回复内容"""
+5. 中文回复，直接输出回复内容，不要输出思考过程或推理步骤"""
             
             try:
                 reply = await self.config["llm_client"].chat(prompt)

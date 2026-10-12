@@ -22,6 +22,17 @@ class MockLLMClient:
         self.call_count += 1
         self.last_prompt = prompt
 
+        # 合并分析（单次调用返回情感+意图+实体）
+        if "一次性分析" in prompt or "电商客服分析专家" in prompt:
+            return {
+                "emotion": {"type": "neutral", "intensity": 1, "confidence": 0.8},
+                "intent": {"primary": "general_chat", "confidence": 0.85, "urgency": "low"},
+                "entities": {
+                    "order_id": None, "tracking_number": None, "product_name": None,
+                    "phone": None, "amount": None, "quantity": None, "issue_type": None,
+                },
+            }
+
         # 根据 prompt 内容返回不同的响应
         if "情感分析" in prompt or "情感状态" in prompt:
             return {

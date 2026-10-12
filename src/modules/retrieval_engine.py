@@ -49,13 +49,16 @@ class RetrievalResult:
     total_candidates: int = 0
     strategy: str = "hybrid"
 
-    def to_context(self, max_chunks: int = 5) -> str:
-        """转换为 LLM 上下文"""
+    def to_context(self, max_chunks: int = 3, max_chars_per_chunk: int = 180) -> str:
+        """转换为 LLM 上下文（截断以控制 prompt 长度、降低延迟）"""
         if not self.chunks:
             return ""
         parts = []
         for c in self.chunks[:max_chunks]:
-            parts.append(f"[{c.category}] {c.content}")
+            text = c.content
+            if len(text) > max_chars_per_chunk:
+                text = text[:max_chars_per_chunk] + "…"
+            parts.append(f"[{c.category}] {text}")
         return "\n\n".join(parts)
 
     def to_sources(self, max_chunks: int = 5) -> list:

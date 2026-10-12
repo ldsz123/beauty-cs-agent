@@ -71,7 +71,7 @@ class OpenAIClient(BaseLLMClient):
                    system_prompt: str = None,
                    response_format: str = "text",
                    temperature: float = 0.7,
-                   max_tokens: int = 2048) -> str:
+                   max_tokens: int = 4096) -> str:
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -111,7 +111,19 @@ class OpenAIClient(BaseLLMClient):
                 llm_tokens_total.labels(provider="openai", model=self.model, token_type="completion").inc(usage.get("completion_tokens", 0))
                 llm_tokens_total.labels(provider="openai", model=self.model, token_type="total").inc(usage.get("total_tokens", 0))
 
-            content = result["choices"][0]["message"]["content"]
+            message = result["choices"][0]["message"]
+            content = message.get("content")
+
+            # 思考模型（如 LongCat-2.5-Preview）可能因推理占满 token 导致 content 为空
+            if content is None:
+                reasoning = message.get("reasoning_content") or ""
+                finish = result["choices"][0].get("finish_reason")
+                if finish == "length":
+                    raise ValueError(
+                        f"模型输出被截断（推理占用过多 token），请增大 max_tokens。"
+                        f"当前 max_tokens={max_tokens}"
+                    )
+                content = reasoning
 
             if response_format == "json":
                 return json.loads(content)
@@ -119,6 +131,7 @@ class OpenAIClient(BaseLLMClient):
         except Exception as e:
             duration = time.time() - start_time
             llm_call_duration_seconds.labels(provider="openai", model=self.model).observe(duration)
+            logger.error(f"LLM chat failed: {e}")
             raise
     
     async def chat_stream(self, prompt: str,
@@ -176,12 +189,13 @@ class OpenAIClient(BaseLLMClient):
         payload = {
             "model": self.model,
             "messages": messages,
-            "max_tokens": 2048
+            "max_tokens": 2048,
+            **self.extra_kwargs,
         }
-        
+
         if response_format == "json":
             payload["response_format"] = {"type": "json_object"}
-        
+
         response = await self._client.post(
             f"{self.base_url}/chat/completions",
             json=payload
@@ -291,25 +305,21 @@ class AnthropicClient(BaseLLMClient):
 def create_llm_client(config: dict) -> BaseLLMClient:
     """工厂函数：根据配置创建 LLM 客户端"""
     provider = config.get("provider", "openai")
-    
-    if provider == "openai":
-        return OpenAIClient(
-            api_key=config["api_key"],
-            base_url=config.get("base_url", "https://api.openai.com/v1"),
-            model=config.get("model", "gpt-4o"),
-            timeout=config.get("timeout", 30)
-        )
-    elif provider == "anthropic":
+    # 额外请求参数（如 LongCat 的 enable_thinking）
+    extra_params = config.get("extra_params", {}) or {}
+
+    if provider == "anthropic":
         return AnthropicClient(
             api_key=config["api_key"],
             model=config.get("model", "claude-sonnet-4-20250514"),
             timeout=config.get("timeout", 30)
         )
     else:
-        # 默认使用 OpenAI 兼容接口
+        # 默认使用 OpenAI 兼容接口（OpenAI / LongCat / 通义 / 豆包等）
         return OpenAIClient(
             api_key=config["api_key"],
             base_url=config.get("base_url", "https://api.openai.com/v1"),
             model=config.get("model", "gpt-4o"),
-            timeout=config.get("timeout", 30)
+            timeout=config.get("timeout", 30),
+            **extra_params,
         )

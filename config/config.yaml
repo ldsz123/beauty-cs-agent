@@ -9,18 +9,21 @@ app:
 
 # LLM 配置
 llm:
-  provider: "openai"  # openai / anthropic / qwen / doubao
+  provider: "${LLM_PROVIDER:-openai}"  # openai / anthropic / qwen / doubao
   api_key: "${LLM_API_KEY}"
   base_url: "${LLM_BASE_URL:-https://api.openai.com/v1}"
-  model: "gpt-4o"
+  model: "${LLM_MODEL:-LongCat-2.5-Preview}"
   temperature: 0.7
   max_tokens: 2048
-  timeout: 30
+  timeout: 60
+  # 额外请求参数（LongCat 关闭思考可大幅降低延迟；OpenAI 请删除此项）
+  extra_params:
+    enable_thinking: false
 
   # 视觉模型（图理解）
   vision:
     provider: "openai"
-    model: "gpt-4o"
+    model: "${LLM_VISION_MODEL:-LongCat-2.5-Preview}"
     api_key: "${LLM_API_KEY}"
 
 # 数据库配置
