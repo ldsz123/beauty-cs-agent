@@ -52,3 +52,6 @@ backups/*.dump
 tmp/
 temp/
 *.tmp
+
+# CI workflow 需 token 具备 workflow 权限才能推送
+.github/workflows/ci.yml
