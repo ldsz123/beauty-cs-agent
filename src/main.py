@@ -43,7 +43,11 @@ def load_config() -> dict:
     config_path = os.environ.get("CONFIG_PATH", "config/config.yaml")
     
     config = {
-        "app": {"name": "电商智能客服Agent", "host": "0.0.0.0", "port": 8000},
+        "app": {
+            "name": "电商智能客服Agent",
+            "host": os.environ.get("APP_HOST", "0.0.0.0"),
+            "port": int(os.environ.get("APP_PORT", "8000")),
+        },
         "llm": {
             "provider": os.environ.get("LLM_PROVIDER", "openai"),
             "api_key": os.environ.get("LLM_API_KEY", ""),
@@ -914,5 +918,9 @@ async def close_ticket(ticket_id: str, resolution: str = ""):
 if __name__ == "__main__":
     import uvicorn
     config = load_config()
-    uvicorn.run("src.main:app", host=config["app"]["host"],
-                port=config["app"]["port"], reload=True)
+    uvicorn.run(
+        "src.main:app",
+        host=str(config["app"]["host"]),
+        port=int(config["app"]["port"]),
+        reload=False,
+    )
