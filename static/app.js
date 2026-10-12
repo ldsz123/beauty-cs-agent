@@ -92,6 +92,24 @@ function addMessage(role, content, meta) {
     if (tags.children.length > 0) {
       body.appendChild(tags);
     }
+
+    // 知识来源
+    if (meta.sources && meta.sources.length > 0) {
+      var srcBox = document.createElement('div');
+      srcBox.className = 'sources';
+      var title = document.createElement('div');
+      title.className = 'sources-title';
+      title.textContent = '📎 知识来源';
+      srcBox.appendChild(title);
+      meta.sources.slice(0, 3).forEach(function (s) {
+        var item = document.createElement('div');
+        item.className = 'source-item';
+        var by = (s.matched_by || []).join('+');
+        item.textContent = '[' + (s.category || '知识') + '] ' + s.content + '（相关度 ' + s.score + '，' + by + '）';
+        srcBox.appendChild(item);
+      });
+      body.appendChild(srcBox);
+    }
   }
 
   row.appendChild(avatar);
@@ -146,7 +164,8 @@ async function sendMessage() {
     addMessage('bot', data.reply, {
       emotion: data.emotion ? data.emotion.type : null,
       intent: data.intent,
-      time: data.processing_time_ms
+      time: data.processing_time_ms,
+      sources: data.sources
     });
 
     if (data.need_human) {

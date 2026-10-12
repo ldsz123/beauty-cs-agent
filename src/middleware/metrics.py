@@ -21,17 +21,18 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         duration = time.time() - start_time
 
         # 记录指标（跳过 metrics 端点自身）
-        if request.path != "/metrics":
+        path = request.scope.get("path", "")
+        if path != "/metrics":
             status = str(response.status_code)
             http_requests_total.labels(
                 method=request.method,
-                path=request.path,
+                path=path,
                 status=status,
             ).inc()
 
             http_request_duration_seconds.labels(
                 method=request.method,
-                path=request.path,
+                path=path,
             ).observe(duration)
 
         return response

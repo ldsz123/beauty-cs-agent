@@ -248,3 +248,8 @@ body {
   .topbar, .input-area { padding-left: 13px; padding-right: 13px; }
   #chatBox { padding-left: 13px; padding-right: 13px; }
 }
+
+/* 知识来源 */
+.sources { margin-top: 8px; padding: 8px 10px; background: #f8fafc; border-left: 3px solid #6366f1; border-radius: 4px; }
+.sources-title { font-size: 11px; color: #6366f1; font-weight: 600; margin-bottom: 4px; }
+.source-item { font-size: 12px; color: #64748b; line-height: 1.6; }

@@ -29,12 +29,14 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         self.exclude_paths = exclude_paths or ["/api/health", "/api/health/ready", "/metrics", "/docs", "/openapi.json", "/redoc"]
 
     async def dispatch(self, request: Request, call_next):
+        path = request.scope.get("path", "")
+
         # 跳过不需要认证的路径
-        if any(request.path.startswith(p) for p in self.exclude_paths):
+        if any(path.startswith(p) for p in self.exclude_paths):
             return await call_next(request)
 
         # 静态页面和首页不需要认证
-        if request.path.startswith("/static") or request.path == "/":
+        if path.startswith("/static") or path in ("/", "/dashboard", "/admin"):
             return await call_next(request)
 
         api_key = request.headers.get(API_KEY_NAME)

@@ -8,6 +8,13 @@ import json
 from typing import Optional
 from contextlib import asynccontextmanager
 
+# 加载 .env（必须在读取环境变量前）
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 import yaml
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +33,8 @@ from .exceptions import AppException
 from .utils.sanitizer import InputSanitizer, sanitize_input, escape_prompt_input
 from .utils.metrics import get_metrics_response, app_info
 from .utils.logging_config import setup_logging, get_request_id
+from .api.state import state
+from .api import admin_routes, kb_routes
 
 
 # ========== 配置加载 ==========
@@ -162,6 +171,9 @@ async def lifespan(app: FastAPI):
         "redis_cache": redis_cache,
     }
     agent = CustomerServiceAgent(agent_config)
+    state.agent = agent
+    state.db_manager = db_manager
+    state.redis_cache = redis_cache
     logger.info(f"Agent ready (session_mode={config['session_mode']}, kb_mode={config['kb_mode']})")
     
     yield
@@ -266,6 +278,8 @@ class ChatResponse(BaseModel):
     need_human: bool
     processing_time_ms: int
     session_id: str
+    sources: list = []
+    trace_id: str = ""
 
 
 class HealthResponse(BaseModel):
@@ -382,6 +396,8 @@ async def chat(request: ChatRequest):
         need_human=response.need_human,
         processing_time_ms=response.processing_time_ms,
         session_id=session_id,
+        sources=response.sources,
+        trace_id=response.trace_id,
     )
 
 
@@ -478,6 +494,11 @@ async def get_stats():
     return stats
 
 
+# ========== 路由注册 ==========
+app.include_router(admin_routes.router)
+app.include_router(kb_routes.router)
+
+
 # ========== 异常处理器 ==========
 app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
@@ -502,6 +523,12 @@ async def serve_index():
 async def serve_dashboard():
     """运营看板"""
     return FileResponse("static/dashboard.html")
+
+
+@app.get("/admin", include_in_schema=False)
+async def serve_admin():
+    """运营管理控制台"""
+    return FileResponse("static/admin.html")
 
 
 @app.delete("/api/session/{session_id}")
@@ -724,6 +751,163 @@ async def execute_workflow(workflow_id: str, variables: dict = None):
         return agent.workflow_engine.get_execution_status(execution.execution_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ========== 问题排查链路 ==========
+@app.get("/api/traces")
+async def list_traces(limit: int = 50, session_id: str = None,
+                      status: str = None, intent: str = None):
+    """查询问答链路列表"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+
+    traces = agent.trace_recorder.list_traces(
+        limit=limit, session_id=session_id, status=status, intent=intent
+    )
+    return {"total": len(traces), "traces": traces}
+
+
+@app.get("/api/traces/stats")
+async def trace_stats():
+    """链路统计"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+
+    return agent.trace_recorder.get_stats()
+
+
+@app.get("/api/traces/{trace_id}")
+async def get_trace(trace_id: str):
+    """获取单条链路详情（节点、模型IO、检索、业务查询）"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+
+    trace = agent.trace_recorder.get_trace(trace_id)
+    if not trace:
+        raise HTTPException(status_code=404, detail="Trace not found")
+    return trace
+
+
+@app.get("/api/unresolved")
+async def list_unresolved(limit: int = 50):
+    """未解决问题列表（待人工跟进）"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+
+    items = agent.trace_recorder.list_unresolved(limit=limit)
+    return {"total": len(items), "items": items}
+
+
+# ========== 人工客服工作台 ==========
+@app.get("/api/agents")
+async def list_agents(status: str = None):
+    """列出客服账号"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return {"agents": agent.human_service.list_agents(status=status)}
+
+
+@app.post("/api/agents")
+async def create_agent(name: str, role: str = "agent",
+                       reception_scope: dict = None, max_concurrent: int = 5):
+    """创建客服账号"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    a = agent.human_service.create_agent(name, role, reception_scope, max_concurrent)
+    return a.to_dict()
+
+
+@app.post("/api/agents/{agent_id}/status")
+async def set_agent_status(agent_id: str, status: str):
+    """设置客服在线状态（online/offline/busy）"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.human_service.set_agent_status(agent_id, status)
+
+
+@app.post("/api/agents/{agent_id}/scope")
+async def update_agent_scope(agent_id: str, scope: dict):
+    """更新客服接待范围"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.human_service.update_reception_scope(agent_id, scope)
+
+
+@app.get("/api/agents/{agent_id}/workload")
+async def get_agent_workload(agent_id: str):
+    """客服工作负载"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.human_service.get_agent_workload(agent_id)
+
+
+@app.get("/api/tickets")
+async def list_tickets(status: str = None, agent_id: str = None, priority: str = None):
+    """列出转人工工单"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    tickets = agent.human_service.list_tickets(status=status, agent_id=agent_id, priority=priority)
+    return {"total": len(tickets), "tickets": tickets}
+
+
+@app.get("/api/tickets/queue")
+async def get_ticket_queue():
+    """待分配工单队列"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    queue = agent.human_service.get_queue()
+    return {"total": len(queue), "queue": queue}
+
+
+@app.get("/api/tickets/stats")
+async def ticket_stats():
+    """工单统计"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.human_service.get_stats()
+
+
+@app.get("/api/tickets/{ticket_id}")
+async def get_ticket(ticket_id: str):
+    """获取工单详情"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    ticket = agent.human_service.get_ticket(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return ticket.to_dict()
+
+
+@app.post("/api/tickets/{ticket_id}/assign")
+async def assign_ticket(ticket_id: str, agent_id: str):
+    """分配工单给客服"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.human_service.assign_to_agent(ticket_id, agent_id)
+
+
+@app.post("/api/sessions/{session_id}/takeover")
+async def takeover_session(session_id: str, agent_id: str):
+    """客服接管会话"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.human_service.takeover(agent_id, session_id)
+
+
+@app.post("/api/sessions/{session_id}/agent-reply")
+async def agent_reply(session_id: str, agent_id: str, content: str):
+    """客服回复会话"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.human_service.agent_reply(agent_id, session_id, content)
+
+
+@app.post("/api/tickets/{ticket_id}/close")
+async def close_ticket(ticket_id: str, resolution: str = ""):
+    """关闭工单"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.human_service.close_ticket(ticket_id, resolution)
 
 
 # ========== 入口 ==========

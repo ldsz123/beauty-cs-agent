@@ -76,12 +76,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.session_window = int(os.environ.get("RATE_LIMIT_SESSION_WINDOW", "60"))
 
     async def dispatch(self, request: Request, call_next):
+        path = request.scope.get("path", "")
+
         # 跳过非 API 路径
-        if not request.path.startswith("/api"):
+        if not path.startswith("/api"):
             return await call_next(request)
 
         # 跳过健康检查和 metrics
-        if request.path in ("/api/health", "/api/health/ready", "/metrics"):
+        if path in ("/api/health", "/api/health/ready", "/metrics"):
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"

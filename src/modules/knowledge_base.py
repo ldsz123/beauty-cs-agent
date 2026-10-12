@@ -248,6 +248,20 @@ class KnowledgeBase:
             logger.error(f"PostgreSQL KB search failed: {e}")
             return None
     
+    def get_all_chunks(self) -> list[dict]:
+        """获取所有知识切片（供检索/向量化使用）"""
+        chunks = []
+        for idx, entry in enumerate(self._builtin_kb):
+            content = entry.get("content", "")
+            chunks.append({
+                "chunk_id": entry.get("id") or f"kb_{idx:04d}",
+                "content": content,
+                "title": entry.get("title", content[:30]),
+                "category": entry.get("category", ""),
+                "tags": entry.get("tags", []),
+            })
+        return chunks
+
     async def add_entry(self, category: str, content: str,
                         tags: list = None, priority: int = 0):
         """添加知识库条目"""

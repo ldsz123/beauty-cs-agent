@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>运营管理控制台 - 美妆智能客服</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 210px; background: #001529; color: #fff; flex-shrink: 0; }
+.logo { padding: 20px; font-size: 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.logo small { display:block; font-weight:400; font-size:12px; opacity:.6; margin-top:4px; }
+.menu { padding: 10px 0; }
+.menu-item { padding: 12px 20px; cursor: pointer; font-size: 14px; color: rgba(255,255,255,0.75); transition: all .2s; border-left: 3px solid transparent; }
+.menu-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.menu-item.active { background: #1890ff; color: #fff; border-left-color: #40a9ff; }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar { background: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.topbar h2 { font-size: 18px; }
+.topbar .links a { color: #1890ff; text-decoration: none; font-size: 13px; margin-left: 16px; }
+.content { padding: 20px 24px; flex: 1; }
+.panel { display: none; }
+.panel.active { display: block; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.card { background: #fff; border-radius: 8px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.card .label { font-size: 12px; color: #888; margin-bottom: 6px; }
+.card .value { font-size: 26px; font-weight: 700; }
+.card .value.warn { color: #fa8c16; }
+.card .value.ok { color: #52c41a; }
+.toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+input, select, button, textarea { font-family: inherit; font-size: 13px; }
+input[type=text], input[type=number], select, textarea { padding: 7px 10px; border: 1px solid #d9d9d9; border-radius: 4px; outline: none; }
+input:focus, select:focus, textarea:focus { border-color: #1890ff; }
+button { padding: 7px 14px; border: none; border-radius: 4px; background: #1890ff; color: #fff; cursor: pointer; transition: opacity .2s; }
+button:hover { opacity: .85; }
+button.ghost { background: #fff; color: #1890ff; border: 1px solid #1890ff; }
+button.danger { background: #ff4d4f; }
+button.sm { padding: 4px 10px; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+th, td { padding: 11px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+th { background: #fafafa; color: #666; font-weight: 600; font-size: 12px; }
+tr:hover td { background: #fafcff; }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 12px; }
+.badge.green { background: #f6ffed; color: #52c41a; }
+.badge.orange { background: #fff7e6; color: #fa8c16; }
+.badge.red { background: #fff1f0; color: #ff4d4f; }
+.badge.blue { background: #e6f7ff; color: #1890ff; }
+.badge.gray { background: #f5f5f5; color: #888; }
+.empty { text-align: center; padding: 30px; color: #aaa; font-size: 13px; }
+.modal-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); align-items: center; justify-content: center; z-index: 100; }
+.modal-mask.show { display: flex; }
+.modal { background: #fff; border-radius: 8px; width: 480px; max-width: 92vw; max-height: 86vh; overflow-y: auto; }
+.modal h3 { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; font-size: 16px; }
+.modal .body { padding: 20px; }
+.modal .field { margin-bottom: 14px; }
+.modal .field label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+.modal .field input, .modal .field select, .modal .field textarea { width: 100%; }
+.modal .foot { padding: 14px 20px; border-top: 1px solid #f0f0f0; text-align: right; display: flex; gap: 10px; justify-content: flex-end; }
+.tag { display:inline-block; padding:1px 7px; background:#f0f5ff; color:#2f54eb; border-radius:3px; font-size:11px; margin-right:4px; }
+.loading { text-align: center; padding: 20px; color: #999; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="logo">美妆智能客服<small>运营管理控制台</small></div>
+    <div class="menu" id="menu">
+      <div class="menu-item active" data-panel="overview">📊 总览</div>
+      <div class="menu-item" data-panel="products">💄 商品管理</div>
+      <div class="menu-item" data-panel="inventory">📦 库存管理</div>
+      <div class="menu-item" data-panel="orders">🧾 订单管理</div>
+      <div class="menu-item" data-panel="refunds">↩️ 退款管理</div>
+      <div class="menu-item" data-panel="customers">👥 客户管理</div>
+      <div class="menu-item" data-panel="workbench">🎧 客服工作台</div>
+      <div class="menu-item" data-panel="kb">📚 知识库管理</div>
+      <div class="menu-item" data-panel="traces">🔍 问题排查</div>
+      <div class="menu-item" data-panel="system">⚙️ 用户与配置</div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <h2 id="panelTitle">总览</h2>
+      <div class="links">
+        <a href="/">聊天界面</a>
+        <a href="/dashboard">数据看板</a>
+        <a href="/docs" target="_blank">API 文档</a>
+      </div>
+    </div>
+    <div class="content" id="content"><div class="loading">加载中...</div></div>
+  </div>
+</div>
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h3 id="modalTitle">编辑</h3>
+    <div class="body" id="modalBody"></div>
+    <div class="foot">
+      <button class="ghost" onclick="closeModal()">取消</button>
+      <button id="modalOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let currentPanel = 'overview';
+
+const PANEL_TITLES = {
+  overview: '总览', products: '商品管理', inventory: '库存管理', orders: '订单管理',
+  refunds: '退款管理', customers: '客户管理', workbench: '客服工作台',
+  kb: '知识库管理', traces: '问题排查', system: '用户与配置'
+};
+
+async function api(path, opts) {
+  try {
+    const r = await fetch(path, opts);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } catch (e) {
+    console.error(path, e);
+    return null;
+  }
+}
+
+function badge(text, color) { return `<span class="badge ${color}">${text}</span>`; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ============ 菜单切换 ============
+document.querySelectorAll('.menu-item').forEach(el => {
+  el.onclick = () => {
+    document.querySelectorAll('.menu-item').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    currentPanel = el.dataset.panel;
+    $('panelTitle').textContent = PANEL_TITLES[currentPanel];
+    render();
+  };
+});
+
+async function render() {
+  const c = $('content');
+  c.innerHTML = '<div class="loading">加载中...</div>';
+  const fn = PANELS[currentPanel];
+  try { c.innerHTML = await fn(); } catch (e) { c.innerHTML = '<div class="empty">加载失败: ' + esc(e.message) + '</div>'; }
+}
+
+// ============ 总览 ============
+async function renderOverview() {
+  const d = await api('/api/admin/overview');
+  if (!d) return '<div class="empty">无法加载</div>';
+  return `
+    <div class="cards">
+      <div class="card"><div class="label">商品总数</div><div class="value">${d.products.total}</div></div>
+      <div class="card"><div class="label">在售商品</div><div class="value ok">${d.products.active}</div></div>
+      <div class="card"><div class="label">库存 SKU</div><div class="value">${d.inventory.total_skus}</div></div>
+      <div class="card"><div class="label">低库存预警</div><div class="value warn">${d.inventory.low_stock}</div></div>
+      <div class="card"><div class="label">订单总数</div><div class="value">${d.orders.total}</div></div>
+      <div class="card"><div class="label">待处理退款</div><div class="value warn">${d.refunds.pending}</div></div>
+      <div class="card"><div class="label">客户数</div><div class="value">${d.customers.total}</div></div>
+      <div class="card"><div class="label">后台用户</div><div class="value">${d.users.total}</div></div>
+    </div>`;
+}
+
+// ============ 商品 ============
+async function renderProducts() {
+  const d = await api('/api/admin/products?page_size=50');
+  if (!d) return '<div class="empty">无法加载</div>';
+  const rows = d.items.map(p => `
+    <tr>
+      <td>${esc(p.name)}</td>
+      <td>${esc(p.brand)}</td>
+      <td>${esc(p.category)}</td>
+      <td>¥${p.price}</td>
+      <td>${p.stock}</td>
+      <td>${p.status === 'active' ? badge('在售','green') : badge('下架','gray')}</td>
+      <td>
+        <button class="sm ghost" onclick="editProduct('${p.id}')">编辑</button>
+        <button class="sm danger" onclick="delProduct('${p.id}')">下架</button>
+      </td>
+    </tr>`).join('');
+  return `
+    <div class="toolbar">
+      <input type="text" id="pKw" placeholder="搜索商品名/品牌">
+      <button onclick="searchProducts()">搜索</button>
+      <button class="ghost" onclick="newProduct()">+ 新增商品</button>
+      <span style="color:#888;font-size:13px">共 ${d.total} 个商品</span>
+    </div>
+    <table><thead><tr><th>名称</th><th>品牌</th><th>品类</th><th>价格</th><th>库存</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="7" class="empty">暂无数据</td></tr>'}</tbody></table>`;
+}
+
+async function searchProducts() {
+  const kw = $('pKw').value.trim();
+  const d = await api('/api/admin/products?page_size=50' + (kw ? '&keyword=' + encodeURIComponent(kw) : ''));
+  if (!d) return;
+  const rows = d.items.map(p => `
+    <tr><td>${esc(p.name)}</td><td>${esc(p.brand)}</td><td>${esc(p.category)}</td>
+    <td>¥${p.price}</td><td>${p.stock}</td>
+    <td>${p.status === 'active' ? badge('在售','green') : badge('下架','gray')}</td>
+    <td><button class="sm ghost" onclick="editProduct('${p.id}')">编辑</button>
+    <button class="sm danger" onclick="delProduct('${p.id}')">下架</button></td></tr>`).join('');
+  document.querySelector('tbody').innerHTML = rows || '<tr><td colspan="7" class="empty">无匹配</td></tr>';
+}
+
+function newProduct() {
+  openModal('新增商品', [
+    {k:'name', l:'商品名称', t:'text'},
+    {k:'brand', l:'品牌', t:'text'},
+    {k:'category', l:'品类', t:'text', v:'护肤'},
+    {k:'price', l:'价格', t:'number'},
+    {k:'stock', l:'库存', t:'number'},
+    {k:'description', l:'描述', t:'textarea'},
+  ], async (data) => {
+    data.price = parseFloat(data.price || 0);
+    data.stock = parseInt(data.stock || 0);
+    await api('/api/admin/products', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+    closeModal(); render();
+  });
+}
+
+async function editProduct(id) {
+  const p = await api('/api/admin/products/' + id);
+  if (!p) return;
+  openModal('编辑商品', [
+    {k:'name', l:'商品名称', t:'text', v:p.name},
+    {k:'brand', l:'品牌', t:'text', v:p.brand},
+    {k:'category', l:'品类', t:'text', v:p.category},
+    {k:'price', l:'价格', t:'number', v:p.price},
+    {k:'description', l:'描述', t:'textarea', v:p.description},
+  ], async (data) => {
+    data.price = parseFloat(data.price || 0);
+    await api('/api/admin/products/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+    closeModal(); render();
+  });
+}
+
+async function delProduct(id) {
+  if (!confirm('确认下架该商品？')) return;
+  await api('/api/admin/products/' + id, {method:'DELETE'});
+  render();
+}
+
+// ============ 库存 ============
+async function renderInventory() {
+  const d = await api('/api/admin/inventory');
+  if (!d) return '<div class="empty">无法加载</div>';
+  const rows = d.items.map(i => `
+    <tr>
+      <td>${esc(i.product_name)}</td>
+      <td>${i.stock}</td>
+      <td>${i.warning_threshold}</td>
+      <td>${i.low_stock ? badge('低库存','red') : badge('正常','green')}</td>
+      <td>
+        <button class="sm ghost" onclick="adjustStock('${i.product_id}', 10)">+10</button>
+        <button class="sm ghost" onclick="adjustStock('${i.product_id}', -10)">-10</button>
+        <button class="sm" onclick="setStock('${i.product_id}')">设置</button>
+      </td>
+    </tr>`).join('');
+  return `<table><thead><tr><th>商品</th><th>库存</th><th>预警阈值</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5" class="empty">暂无数据</td></tr>'}</tbody></table>`;
+}
+
+async function adjustStock(pid, delta) {
+  await api(`/api/admin/inventory/${pid}/adjust?delta=${delta}`, {method:'POST'});
+  render();
+}
+function setStock(pid) {
+  openModal('设置库存', [{k:'stock', l:'库存数量', t:'number'}], async (d) => {
+    await api(`/api/admin/inventory/${pid}/adjust?stock=${parseInt(d.stock||0)}`, {method:'POST'});
+    closeModal(); render();
+  });
+}
+
+// ============ 订单 ============
+async function renderOrders() {
+  const d = await api('/api/admin/orders');
+  if (!d) return '<div class="empty">无法加载</div>';
+  const STATUS = {pending:'待支付', paid:'已支付', shipped:'已发货', completed:'已完成', cancelled:'已取消', returned:'已退货'};
+  const rows = d.items.map(o => `
+    <tr>
+      <td>${esc(o.order_id)}</td>
+      <td>${esc(o.user_id)}</td>
+      <td>¥${o.total_amount}</td>
+      <td>${badge(STATUS[o.status] || o.status, o.status==='completed'?'green':o.status==='cancelled'?'gray':'blue')}</td>
+      <td>${o.tracking_number || '-'}</td>
+      <td><button class="sm ghost" onclick="setOrderStatus('${o.order_id}')">改状态</button></td>
+    </tr>`).join('');
+  return `<table><thead><tr><th>订单号</th><th>用户</th><th>金额</th><th>状态</th><th>物流单号</th><th>操作</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="6" class="empty">暂无订单</td></tr>'}</tbody></table>`;
+}
+
+function setOrderStatus(oid) {
+  openModal('修改订单状态', [{k:'status', l:'状态 (pending/paid/shipped/completed/cancelled)', t:'text'}], async (d) => {
+    await api(`/api/admin/orders/${oid}/status?status=${encodeURIComponent(d.status)}`, {method:'PUT'});
+    closeModal(); render();
+  });
+}
+
+// ============ 退款 ============
+async function renderRefunds() {
+  const d = await api('/api/admin/refunds');
+  if (!d) return '<div class="empty">无法加载</div>';
+  const rows = d.items.map(r => `
+    <tr>
+      <td>${esc(r.return_id)}</td>
+      <td>${esc(r.order_id)}</td>
+      <td>¥${r.refund_amount}</td>
+      <td>${esc(r.reason)}</td>
+      <td>${badge(r.status, r.status==='approved'?'green':r.status==='rejected'?'red':'orange')}</td>
+      <td>
+        ${r.status==='pending' ? `<button class="sm" onclick="approveRefund('${r.return_id}')">通过</button>
+        <button class="sm danger" onclick="rejectRefund('${r.return_id}')">拒绝</button>` : '-'}
+      </td>
+    </tr>`).join('');
+  return `<table><thead><tr><th>退款单号</th><th>订单号</th><th>金额</th><th>原因</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="6" class="empty">暂无退款申请</td></tr>'}</tbody></table>`;
+}
+
+async function approveRefund(id) {
+  if (!confirm('确认通过该退款申请？')) return;
+  await api(`/api/admin/refunds/${id}/approve`, {method:'POST'});
+  render();
+}
+function rejectRefund(id) {
+  openModal('拒绝退款', [{k:'reason', l:'拒绝原因', t:'text'}], async (d) => {
+    await api(`/api/admin/refunds/${id}/reject?reason=${encodeURIComponent(d.reason||'')}`, {method:'POST'});
+    closeModal(); render();
+  });
+}
+
+// ============ 客户 ============
+async function renderCustomers() {
+  const d = await api('/api/admin/customers');
+  if (!d) return '<div class="empty">无法加载</div>';
+  const rows = d.items.map(c => `
+    <tr>
+      <td>${esc(c.nickname)}</td>
+      <td>${esc(c.phone)}</td>
+      <td>${badge(c.level, c.level==='VIP'?'orange':'gray')}</td>
+      <td>${c.total_orders}</td>
+      <td>¥${c.total_spent}</td>
+      <td>${(c.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</td>
+    </tr>`).join('');
+  return `<div class="toolbar"><button class="ghost" onclick="newCustomer()">+ 新增客户</button></div>
+    <table><thead><tr><th>昵称</th><th>手机</th><th>等级</th><th>订单数</th><th>消费额</th><th>标签</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="6" class="empty">暂无客户</td></tr>'}</tbody></table>`;
+}
+
+function newCustomer() {
+  openModal('新增客户', [
+    {k:'nickname', l:'昵称', t:'text'},
+    {k:'phone', l:'手机号', t:'text'},
+    {k:'level', l:'等级', t:'text', v:'normal'},
+  ], async (d) => {
+    await api('/api/admin/customers', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)});
+    closeModal(); render();
+  });
+}
+
+// ============ 客服工作台 ============
+async function renderWorkbench() {
+  const stats = await api('/api/tickets/stats');
+  const agents = await api('/api/agents');
+  const tickets = await api('/api/tickets');
+
+  const agentRows = (agents?.agents || []).map(a => `
+    <tr>
+      <td>${esc(a.name)}</td>
+      <td>${a.role}</td>
+      <td>${a.status==='online'?badge('在线','green'):badge('离线','gray')}</td>
+      <td>${a.active_count} / ${a.max_concurrent}</td>
+      <td>${a.total_handled}</td>
+      <td>${(a.reception_scope?.categories||['全部']).join('、')}</td>
+      <td>
+        ${a.status==='online'
+          ? `<button class="sm ghost" onclick="setAgent('${a.agent_id}','offline')">下线</button>`
+          : `<button class="sm" onclick="setAgent('${a.agent_id}','online')">上线</button>`}
+      </td>
+    </tr>`).join('');
+
+  const ticketRows = (tickets?.tickets || []).map(t => `
+    <tr>
+      <td>${esc(t.ticket_id)}</td>
+      <td>${esc(t.session_id)}</td>
+      <td>${badge(t.priority, t.priority==='urgent'?'red':t.priority==='high'?'orange':'gray')}</td>
+      <td>${esc(t.emotion)}</td>
+      <td>${badge(t.status, t.status==='serving'?'green':t.status==='pending'?'orange':'gray')}</td>
+      <td>${esc(t.assigned_agent || '未分配')}</td>
+      <td>
+        ${t.status==='pending' ? `<button class="sm" onclick="assignTicket('${t.ticket_id}')">分配</button>` : ''}
+        ${t.status!=='closed' ? `<button class="sm ghost" onclick="closeTicket('${t.ticket_id}')">关闭</button>` : ''}
+      </td>
+    </tr>`).join('');
+
+  return `
+    <div class="cards">
+      <div class="card"><div class="label">工单总数</div><div class="value">${stats?.total_tickets ?? 0}</div></div>
+      <div class="card"><div class="label">待分配</div><div class="value warn">${stats?.pending ?? 0}</div></div>
+      <div class="card"><div class="label">服务中</div><div class="value ok">${stats?.serving ?? 0}</div></div>
+      <div class="card"><div class="label">在线客服</div><div class="value">${stats?.online_agents ?? 0} / ${stats?.total_agents ?? 0}</div></div>
+    </div>
+    <h3 style="margin:16px 0 10px;font-size:15px">客服账号</h3>
+    <table><thead><tr><th>姓名</th><th>角色</th><th>状态</th><th>负载</th><th>已处理</th><th>接待范围</th><th>操作</th></tr></thead>
+    <tbody>${agentRows || '<tr><td colspan="7" class="empty">暂无客服</td></tr>'}</tbody></table>
+    <h3 style="margin:20px 0 10px;font-size:15px">转人工工单</h3>
+    <table><thead><tr><th>工单号</th><th>会话</th><th>优先级</th><th>情感</th><th>状态</th><th>客服</th><th>操作</th></tr></thead>
+    <tbody>${ticketRows || '<tr><td colspan="7" class="empty">暂无工单</td></tr>'}</tbody></table>`;
+}
+
+async function setAgent(id, status) {
+  await api(`/api/agents/${id}/status?status=${status}`, {method:'POST'});
+  render();
+}
+function assignTicket(tid) {
+  openModal('分配工单', [{k:'agent_id', l:'客服ID (如 agent_001)', t:'text'}], async (d) => {
+    await api(`/api/tickets/${tid}/assign?agent_id=${encodeURIComponent(d.agent_id)}`, {method:'POST'});
+    closeModal(); render();
+  });
+}
+function closeTicket(tid) {
+  openModal('关闭工单', [{k:'resolution', l:'处理结果', t:'text'}], async (d) => {
+    await api(`/api/tickets/${tid}/close?resolution=${encodeURIComponent(d.resolution||'')}`, {method:'POST'});
+    closeModal(); render();
+  });
+}
+
+// ============ 知识库 ============
+async function renderKB() {
+  const stats = await api('/api/kb/stats');
+  const docs = await api('/api/kb/documents');
+  const versions = await api('/api/kb/versions');
+
+  const docRows = (docs?.items || []).map(d => `
+    <tr>
+      <td>${esc(d.title)}</td>
+      <td>${esc(d.category)}</td>
+      <td>${d.doc_type}</td>
+      <td>${badge(d.status, d.status==='active'?'green':'gray')}</td>
+      <td>
+        <button class="sm ghost" onclick="viewChunks('${d.doc_id}')">切片</button>
+        <button class="sm danger" onclick="delDoc('${d.doc_id}')">删除</button>
+      </td>
+    </tr>`).join('');
+
+  const verRows = (versions?.items || []).map(v => `
+    <tr>
+      <td>v${v.version_number}</td>
+      <td>${esc(v.name)}</td>
+      <td>${badge(v.status, v.status==='published'?'green':v.status==='archived'?'gray':'orange')}</td>
+      <td>${v.chunk_count} 切片</td>
+      <td>${v.effective_at ? new Date(v.effective_at*1000).toLocaleString() : '-'}</td>
+      <td>
+        ${v.status!=='published' ? `<button class="sm" onclick="publishVer('${v.version_id}')">发布</button>` : ''}
+        <button class="sm ghost" onclick="rollbackVer('${v.version_id}')">回滚到此版本</button>
+      </td>
+    </tr>`).join('');
+
+  return `
+    <div class="cards">
+      <div class="card"><div class="label">文档数</div><div class="value">${stats?.documents ?? 0}</div></div>
+      <div class="card"><div class="label">切片数</div><div class="value">${stats?.chunks ?? 0}</div></div>
+      <div class="card"><div class="label">已向量化</div><div class="value ok">${stats?.vectorized_chunks ?? 0}</div></div>
+      <div class="card"><div class="label">版本数</div><div class="value">${stats?.versions ?? 0}</div></div>
+    </div>
+    <div class="toolbar">
+      <button class="ghost" onclick="newDoc()">+ 新增文档</button>
+      <button onclick="vectorizeAll()">全量向量化</button>
+      <button class="ghost" onclick="newVersion()">创建版本快照</button>
+    </div>
+    <h3 style="margin:8px 0 10px;font-size:15px">文档列表</h3>
+    <table><thead><tr><th>标题</th><th>分类</th><th>类型</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${docRows || '<tr><td colspan="5" class="empty">暂无文档</td></tr>'}</tbody></table>
+    <h3 style="margin:20px 0 10px;font-size:15px">版本管理</h3>
+    <table><thead><tr><th>版本</th><th>名称</th><th>状态</th><th>切片数</th><th>生效时间</th><th>操作</th></tr></thead>
+    <tbody>${verRows || '<tr><td colspan="6" class="empty">暂无版本</td></tr>'}</tbody></table>`;
+}
+
+function newDoc() {
+  openModal('新增知识文档', [
+    {k:'title', l:'标题', t:'text'},
+    {k:'category', l:'分类', t:'text'},
+    {k:'content', l:'内容（自动切片）', t:'textarea'},
+  ], async (d) => {
+    await api('/api/kb/documents', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)});
+    closeModal(); render();
+  });
+}
+
+async function viewChunks(docId) {
+  const d = await api('/api/kb/chunks?doc_id=' + docId);
+  const html = (d?.items || []).map(c => `
+    <div style="border:1px solid #eee;border-radius:6px;padding:10px;margin-bottom:8px">
+      <div style="font-size:12px;color:#888;margin-bottom:6px">${c.chunk_id} ${c.enabled?badge('启用','green'):badge('禁用','gray')} ${c.vectorized?badge('已向量化','blue'):''}</div>
+      <div style="font-size:13px">${esc(c.content)}</div>
+      <div style="margin-top:8px">
+        <button class="sm ghost" onclick="editChunk('${c.chunk_id}')">编辑</button>
+        <button class="sm ghost" onclick="vectorizeChunk('${c.chunk_id}')">向量化</button>
+      </div>
+    </div>`).join('') || '<div class="empty">无切片</div>';
+  openModal('文档切片', [], null, html);
+}
+
+function editChunk(cid) {
+  openModal('编辑切片', [{k:'content', l:'切片内容', t:'textarea'}], async (d) => {
+    await api(`/api/kb/chunks/${cid}?content=${encodeURIComponent(d.content)}`, {method:'PUT'});
+    closeModal(); render();
+  });
+}
+async function vectorizeChunk(cid) {
+  await api(`/api/kb/chunks/${cid}/vectorize`, {method:'POST'});
+  alert('向量化完成');
+}
+async function vectorizeAll() {
+  const r = await api('/api/kb/vectorize-all', {method:'POST'});
+  alert(`已向量化 ${r?.vectorized ?? 0} 个切片`);
+}
+function newVersion() {
+  openModal('创建版本快照', [{k:'name', l:'版本名称', t:'text'}, {k:'note', l:'备注', t:'text'}], async (d) => {
+    await api('/api/kb/versions', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)});
+    closeModal(); render();
+  });
+}
+async function publishVer(vid) {
+  await api(`/api/kb/versions/${vid}/publish`, {method:'POST'});
+  render();
+}
+async function rollbackVer(vid) {
+  if (!confirm('确认回滚到该版本？当前未发布的修改将丢失。')) return;
+  await api(`/api/kb/versions/${vid}/rollback`, {method:'POST'});
+  render();
+}
+async function delDoc(id) {
+  if (!confirm('确认删除该文档及其切片？')) return;
+  await api('/api/kb/documents/' + id, {method:'DELETE'});
+  render();
+}
+
+// ============ 问题排查 ============
+async function renderTraces() {
+  const stats = await api('/api/traces/stats');
+  const traces = await api('/api/traces?limit=30');
+  const rows = (traces?.traces || []).map(t => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px">${esc(t.trace_id)}</td>
+      <td>${esc(t.user_message).slice(0, 30)}</td>
+      <td>${esc(t.intent)}</td>
+      <td>${esc(t.emotion)}</td>
+      <td>${t.total_duration_ms}ms</td>
+      <td>${t.status==='escalated'?badge('转人工','red'):badge('已解决','green')}</td>
+      <td><button class="sm ghost" onclick="viewTrace('${t.trace_id}')">查看链路</button></td>
+    </tr>`).join('');
+  return `
+    <div class="cards">
+      <div class="card"><div class="label">总链路数</div><div class="value">${stats?.total_traces ?? 0}</div></div>
+      <div class="card"><div class="label">已解决</div><div class="value ok">${stats?.resolved ?? 0}</div></div>
+      <div class="card"><div class="label">转人工</div><div class="value warn">${stats?.escalated ?? 0}</div></div>
+      <div class="card"><div class="label">平均耗时</div><div class="value">${Math.round(stats?.avg_duration_ms ?? 0)}ms</div></div>
+    </div>
+    <table><thead><tr><th>链路ID</th><th>用户消息</th><th>意图</th><th>情感</th><th>耗时</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="7" class="empty">暂无链路记录</td></tr>'}</tbody></table>`;
+}
+
+async function viewTrace(tid) {
+  const t = await api('/api/traces/' + tid);
+  if (!t) return;
+  let html = `<div style="font-size:13px;line-height:1.9">
+    <div><b>用户消息：</b>${esc(t.user_message)}</div>
+    <div><b>最终回复：</b>${esc(t.final_reply)}</div>
+    <div><b>意图 / 情感：</b>${esc(t.intent)} / ${esc(t.emotion)}</div>
+  </div>
+  <h4 style="margin:14px 0 8px;font-size:14px">处理节点</h4>`;
+  (t.nodes || []).forEach(n => {
+    html += `<div style="border-left:3px solid #1890ff;padding:6px 10px;margin-bottom:6px;background:#fafcff;font-size:12px">
+      <b>${n.node}</b> <span style="color:#888">(${n.duration_ms}ms)</span>
+      <div style="color:#555">输入: ${esc(JSON.stringify(n.input))}</div>
+      <div style="color:#555">输出: ${esc(JSON.stringify(n.output))}</div>
+    </div>`;
+  });
+  if (t.retrieval && t.retrieval.chunks) {
+    html += `<h4 style="margin:14px 0 8px;font-size:14px">检索结果 (${t.retrieval.strategy}, 候选${t.retrieval.total_candidates})</h4>`;
+    t.retrieval.chunks.forEach(c => {
+      html += `<div style="font-size:12px;color:#555">• ${esc(c.chunk_id)} [${esc(c.category)}] 分数=${c.final_score} 命中=${(c.matched_by||[]).join('+')}</div>`;
+    });
+  }
+  if (t.business_queries && t.business_queries.length) {
+    html += `<h4 style="margin:14px 0 8px;font-size:14px">业务查询</h4>`;
+    t.business_queries.forEach(q => {
+      html += `<div style="font-size:12px;color:#555">• ${esc(q.action)}: ${esc(JSON.stringify(q.result)).slice(0,120)}</div>`;
+    });
+  }
+  openModal('链路详情 ' + tid, [], null, html);
+}
+
+// ============ 系统（用户/角色/配置） ============
+async function renderSystem() {
+  const users = await api('/api/admin/users');
+  const roles = await api('/api/admin/roles');
+  const configs = await api('/api/admin/configs');
+
+  const userRows = (users?.items || []).map(u => `
+    <tr><td>${esc(u.username)}</td><td>${esc(u.name)}</td>
+    <td>${esc(u.role_id)}</td>
+    <td>${badge(u.status,'green')}</td>
+    <td><button class="sm danger" onclick="delUser('${u.user_id}')">删除</button></td></tr>`).join('');
+
+  const roleRows = (roles?.items || []).map(r => `
+    <tr><td>${esc(r.name)}</td><td>${esc(r.role_id)}</td>
+    <td style="font-size:12px">${(r.permissions||[]).join(', ')}</td></tr>`).join('');
+
+  const cfgRows = (configs?.items || []).map(c => `
+    <tr><td>${esc(c.key)}</td>
+    <td>${esc(JSON.stringify(c.value))}</td>
+    <td style="color:#888;font-size:12px">${esc(c.description)}</td>
+    <td><button class="sm ghost" onclick="editConfig('${c.key}')">编辑</button></td></tr>`).join('');
+
+  return `
+    <h3 style="margin:0 0 10px;font-size:15px">后台用户</h3>
+    <div class="toolbar"><button class="ghost" onclick="newUser()">+ 新增用户</button></div>
+    <table><thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>${userRows || '<tr><td colspan="5" class="empty">暂无用户</td></tr>'}</tbody></table>
+    <h3 style="margin:20px 0 10px;font-size:15px">角色权限</h3>
+    <table><thead><tr><th>角色名</th><th>角色ID</th><th>权限</th></tr></thead>
+    <tbody>${roleRows}</tbody></table>
+    <h3 style="margin:20px 0 10px;font-size:15px">系统配置</h3>
+    <table><thead><tr><th>配置项</th><th>值</th><th>说明</th><th>操作</th></tr></thead>
+    <tbody>${cfgRows}</tbody></table>`;
+}
+
+function newUser() {
+  openModal('新增后台用户', [
+    {k:'username', l:'用户名', t:'text'},
+    {k:'name', l:'姓名', t:'text'},
+    {k:'role_id', l:'角色ID (role_admin/role_ops/role_cs)', t:'text', v:'role_cs'},
+  ], async (d) => {
+    const r = await api('/api/admin/users', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)});
+    if (r && r.error) { alert(r.error); return; }
+    closeModal(); render();
+  });
+}
+async function delUser(id) {
+  if (!confirm('确认删除该用户？')) return;
+  await api('/api/admin/users/' + id, {method:'DELETE'});
+  render();
+}
+function editConfig(key) {
+  openModal('编辑配置 ' + key, [{k:'value', l:'值', t:'text'}], async (d) => {
+    let v = d.value;
+    if (v === 'true') v = true; else if (v === 'false') v = false;
+    else if (!isNaN(v) && v !== '') v = Number(v);
+    await api(`/api/admin/configs/${key}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({value: v})});
+    closeModal(); render();
+  });
+}
+
+// ============ 模态框 ============
+let modalOkHandler = null;
+function openModal(title, fields, onOk, customHtml) {
+  $('modalTitle').textContent = title;
+  const body = $('modalBody');
+  if (customHtml) {
+    body.innerHTML = customHtml;
+  } else {
+    body.innerHTML = fields.map(f => `
+      <div class="field"><label>${f.l}</label>
+      ${f.t === 'textarea'
+        ? `<textarea id="f_${f.k}" rows="4">${esc(f.v||'')}</textarea>`
+        : `<input id="f_${f.k}" type="${f.t}" value="${esc(f.v||'')}">`}
+      </div>`).join('');
+  }
+  modalOkHandler = onOk;
+  $('modalOk').style.display = onOk ? '' : 'none';
+  $('modalMask').classList.add('show');
+}
+function closeModal() { $('modalMask').classList.remove('show'); modalOkHandler = null; }
+$('modalOk').onclick = async () => {
+  if (!modalOkHandler) return;
+  const data = {};
+  document.querySelectorAll('#modalBody [id^=f_]').forEach(el => { data[el.id.slice(2)] = el.value; });
+  await modalOkHandler(data);
+};
+
+// ============ 面板映射 ============
+const PANELS = {
+  overview: renderOverview, products: renderProducts, inventory: renderInventory,
+  orders: renderOrders, refunds: renderRefunds, customers: renderCustomers,
+  workbench: renderWorkbench, kb: renderKB, traces: renderTraces, system: renderSystem
+};
+
+render();
+</script>
+</body>
+</html>

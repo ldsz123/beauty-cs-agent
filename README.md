@@ -49,6 +49,89 @@
 - **健康检查**：`/api/health`（Liveness）+ `/api/health/ready`（Readiness）
 - **优雅关闭**：关闭时等待进行中请求完成，正确释放连接池
 
+## 功能总览
+
+### 智能客服问答
+三级流水线（情感识别 → 语义分类 → 实体提取），16 种意图分类，按意图分流到商品/订单/物流/退款/知识问答。
+
+### 知识检索问答
+混合检索：**关键词召回 + 向量召回 + RRF 融合 + 重排**，回答附带**知识来源**（chunk_id、相关度、命中方式）。
+
+### 业务数据查询
+商品价格、库存、订单、售后状态查询；退款设有**业务校验**（订单状态校验、库存校验）与**确认流程**（申请 → 审核 → 完成）。
+
+### 知识库管理
+文档维护（FAQ/文档）、**自动切片 + 切片编辑**、**向量化**、**版本发布**、**生效时间设置**、**历史回滚**。
+
+### 人工客服接待
+转人工工单、**客服接管**、**会话回复**、客服账号管理、**接待范围管理**（按品类/渠道）、自动分配与负载均衡。
+
+### 运营管理后台
+统一管理：**客户、商品、库存、订单、支付、物流、退款、用户、角色、配置**（完整 CRUD）。
+
+### 问题分析与排查
+**提问路由链路记录**：查看一次回答经过的节点、模型输入输出、检索结果、业务查询；**未解决问题列表**跟进待处理会话。
+
+## 控制台页面
+
+| 页面 | 地址 | 说明 |
+|------|------|------|
+| 聊天界面 | `/` | 客服对话，展示情感/意图/来源 |
+| 数据看板 | `/dashboard` | GMV/转化/AI解决率实时看板 |
+| 运营控制台 | `/admin` | 商品/库存/订单/退款/客户/客服/知识库/排查/配置 十合一后台 |
+| API 文档 | `/docs` | Swagger 交互式文档 |
+
+## 新增 API
+
+### 检索与知识库
+```
+GET  /api/kb/stats                    知识库统计
+GET  /api/kb/documents                文档列表
+POST /api/kb/documents                新增文档（自动切片）
+GET  /api/kb/chunks?doc_id=           切片列表
+PUT  /api/kb/chunks/{id}?content=     编辑切片
+POST /api/kb/chunks/{id}/vectorize    向量化切片
+POST /api/kb/vectorize-all            全量向量化
+POST /api/kb/versions                 创建版本快照
+POST /api/kb/versions/{id}/publish    发布版本（可设生效时间）
+POST /api/kb/versions/{id}/rollback   回滚到版本
+```
+
+### 人工客服
+```
+GET  /api/agents                      客服列表
+POST /api/agents/{id}/status?status=  设置在线状态
+GET  /api/tickets                     工单列表
+GET  /api/tickets/queue               待分配队列
+POST /api/tickets/{id}/assign         分配工单
+POST /api/sessions/{id}/takeover      客服接管
+POST /api/sessions/{id}/agent-reply   客服回复
+POST /api/tickets/{id}/close          关闭工单
+```
+
+### 运营后台
+```
+GET  /api/admin/overview              后台总览
+CRUD /api/admin/products              商品管理
+CRUD /api/admin/inventory             库存管理
+CRUD /api/admin/orders                订单管理
+CRUD /api/admin/payments              支付管理
+CRUD /api/admin/shipments             物流管理
+CRUD /api/admin/refunds               退款管理
+CRUD /api/admin/customers             客户管理
+CRUD /api/admin/users                 用户管理
+CRUD /api/admin/roles                 角色管理
+CRUD /api/admin/configs               配置管理
+```
+
+### 问题排查
+```
+GET  /api/traces                      链路列表
+GET  /api/traces/{id}                 链路详情（节点/模型IO/检索/业务查询）
+GET  /api/traces/stats                链路统计
+GET  /api/unresolved                  未解决问题列表
+```
+
 ## 快速开始
 
 ### 方式一：Docker 部署（推荐）

@@ -2,18 +2,35 @@
 API 端点集成测试
 使用 httpx ASGITransport 测试 FastAPI 应用
 """
+import os
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
+from asgi_lifespan import LifespanManager
+
+# 测试环境强制内存模式，避免依赖数据库
+os.environ["SESSION_MODE"] = "memory"
+os.environ["KB_MODE"] = "builtin"
+# 固定测试用 API Key
+TEST_API_KEY = "test-api-key"
+os.environ["API_KEYS"] = TEST_API_KEY
+# 禁用真实 LLM 调用（规则模式），避免测试访问外部 API
+os.environ["LLM_API_KEY"] = ""
+
 from src.main import app
 
 
 @pytest_asyncio.fixture
 async def client():
-    """创建测试客户端"""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+    """创建测试客户端（带 lifespan + API Key，确保 Agent 初始化）"""
+    async with LifespanManager(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://test",
+            headers={"X-API-Key": TEST_API_KEY},
+        ) as ac:
+            yield ac
 
 
 class TestHealthEndpoints:

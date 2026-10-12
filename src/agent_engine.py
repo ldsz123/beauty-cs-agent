@@ -20,6 +20,11 @@ from .modules.operations_manager import OperationsManager
 from .modules.metrics_dashboard import MetricsDashboard
 from .modules.workflow_engine import WorkflowEngine
 from .modules.channel_adapter import ChannelAdapter
+from .modules.retrieval_engine import RetrievalEngine
+from .modules.trace_recorder import TraceRecorder
+from .modules.human_service import HumanServiceManager
+from .modules.admin_service import AdminService
+from .modules.kb_manager import KBManager
 
 
 @dataclass
@@ -33,6 +38,8 @@ class AgentResponse:
     need_human: bool = False
     confidence: float = 0.0
     processing_time_ms: int = 0
+    sources: list = field(default_factory=list)
+    trace_id: str = ""
 
 
 class CustomerServiceAgent:
@@ -104,6 +111,27 @@ class CustomerServiceAgent:
 
         # 多渠道适配器
         self.channel_adapter = ChannelAdapter()
+
+        # 检索增强引擎（关键词 + 向量 + 重排）
+        self.retrieval_engine = RetrievalEngine(
+            self.knowledge_base,
+            llm_client=config.get("llm_client"),
+        )
+
+        # 链路记录器（问题排查）
+        self.trace_recorder = TraceRecorder()
+
+        # 人工客服管理器
+        self.human_service = HumanServiceManager()
+
+        # 运营管理后台
+        self.admin_service = AdminService(
+            beauty_kb=self.beauty_kb,
+            operations_manager=self.operations_manager,
+        )
+
+        # 知识库管理（切片/版本/回滚）
+        self.kb_manager = KBManager(knowledge_base=self.knowledge_base)
         
         logger.info(f"CustomerServiceAgent initialized "
                     f"(session_mode={config.get('session_mode', 'memory')}, "
@@ -116,52 +144,116 @@ class CustomerServiceAgent:
         主处理流程 — 三级流水线
         """
         start_time = time.time()
-        
+
         # 获取会话
         session = await self.session_manager.get_session(session_id)
-        
+
+        # 开始链路记录
+        trace_id = self.trace_recorder.start_trace(session_id, user_message)
+
         # ========== 第一级：情感识别 ==========
+        t0 = time.time()
         emotion_result = await self.emotion_layer.analyze(
             user_message,
             conversation_history=session.history
         )
+        self.trace_recorder.record_node(
+            trace_id, "emotion",
+            input_summary={"message": user_message[:100]},
+            output_summary={
+                "emotion": emotion_result.emotion.value,
+                "intensity": emotion_result.intensity.value,
+                "confidence": round(emotion_result.confidence, 3),
+                "triggers": emotion_result.triggers,
+            },
+            duration_ms=int((time.time() - t0) * 1000),
+        )
         logger.debug(f"Emotion: {emotion_result.emotion.value} (intensity={emotion_result.intensity.value})")
-        
+
         # ========== 第二级：语义分类 ==========
+        t0 = time.time()
         semantic_result = await self.semantic_layer.classify(
             user_message,
             emotion_result=emotion_result,
             conversation_context=session.context
         )
+        self.trace_recorder.record_node(
+            trace_id, "semantic",
+            input_summary={"message": user_message[:100], "emotion": emotion_result.emotion.value},
+            output_summary={
+                "intent": semantic_result.primary_intent.value,
+                "confidence": round(semantic_result.confidence, 3),
+                "urgency": semantic_result.urgency.value,
+            },
+            duration_ms=int((time.time() - t0) * 1000),
+        )
         logger.debug(f"Intent: {semantic_result.primary_intent.value} (confidence={semantic_result.confidence:.2f})")
-        
+
         # ========== 第三级：实体提取 ==========
         image_info = None
         if image_data:
             image_info_obj = await self.vision_module.understand(image_data, context=user_message)
             if image_info_obj:
                 image_info = image_info_obj.__dict__
-        
+
+        t0 = time.time()
         entities = await self.entity_layer.extract(
             user_message,
             intent=semantic_result.primary_intent,
             image_info=image_info
         )
+        self.trace_recorder.record_node(
+            trace_id, "entity",
+            input_summary={"message": user_message[:100], "has_image": image_data is not None},
+            output_summary={
+                "order_id": entities.order_id,
+                "tracking_number": entities.tracking_number,
+                "product_name": entities.product_name,
+                "phone": entities.phone,
+                "amount": entities.amount,
+            },
+            duration_ms=int((time.time() - t0) * 1000),
+        )
         logger.debug(f"Entities: order_id={entities.order_id}, product={entities.product_name}")
-        
+
         # ========== 业务动作执行 ==========
+        t0 = time.time()
         actions = await self.action_executor.execute(
             intent=semantic_result.primary_intent,
             entities=entities,
             session=session.__dict__
         )
-        
-        # ========== 知识库检索 ==========
-        kb_context = await self.knowledge_base.search(
+        self.trace_recorder.record_node(
+            trace_id, "action",
+            input_summary={"intent": semantic_result.primary_intent.value},
+            output_summary={"actions": actions},
+            duration_ms=int((time.time() - t0) * 1000),
+        )
+        for act in actions:
+            self.trace_recorder.record_business_query(
+                trace_id, act.get("action", "unknown"), act
+            )
+
+        # ========== 知识检索（混合：关键词 + 向量 + 重排） ==========
+        t0 = time.time()
+        retrieval = await self.retrieval_engine.retrieve(
             query=user_message,
             intent=semantic_result.primary_intent,
-            entities=entities
+            entities=entities,
         )
+        kb_context = retrieval.to_context()
+        sources = retrieval.to_sources()
+        self.trace_recorder.record_node(
+            trace_id, "retrieval",
+            input_summary={"query": user_message[:100]},
+            output_summary={
+                "strategy": retrieval.strategy,
+                "candidates": retrieval.total_candidates,
+                "returned": len(retrieval.chunks),
+            },
+            duration_ms=int((time.time() - t0) * 1000),
+        )
+        self.trace_recorder.record_retrieval(trace_id, retrieval)
 
         # ========== 美妆知识库检索 ==========
         beauty_context = self._get_beauty_context(user_message, entities)
@@ -187,7 +279,17 @@ class CustomerServiceAgent:
         
         # ========== 判断是否需要转人工 ==========
         need_human = self._check_escalation(emotion_result, semantic_result, session)
-        
+
+        # 转人工时创建工单
+        if need_human:
+            self.human_service.create_ticket(
+                session_id=session_id,
+                reason=semantic_result.primary_intent.value,
+                category=self._infer_ticket_category(entities),
+                user_message=user_message,
+                emotion=emotion_result.emotion.value,
+            )
+
         # 更新会话
         await self.session_manager.update_session(
             session_id,
@@ -214,6 +316,16 @@ class CustomerServiceAgent:
             ai_resolved=not need_human,
         )
 
+        # ========== 结束链路记录 ==========
+        self.trace_recorder.finish_trace(
+            trace_id,
+            reply=reply,
+            intent=semantic_result.primary_intent.value,
+            emotion=emotion_result.emotion.value,
+            need_human=need_human,
+            total_duration_ms=processing_time,
+        )
+
         return AgentResponse(
             reply=reply,
             emotion_result=emotion_result,
@@ -222,7 +334,9 @@ class CustomerServiceAgent:
             actions=actions,
             need_human=need_human,
             confidence=semantic_result.confidence,
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
+            sources=sources,
+            trace_id=trace_id,
         )
     
     async def _generate_response(self, user_message, emotion, semantic,
@@ -385,6 +499,14 @@ class CustomerServiceAgent:
                 emotion_type=emotion.emotion.value,
             )
         return None
+
+    def _infer_ticket_category(self, entities) -> str:
+        """从实体推断工单分类（用于客服接待范围匹配）"""
+        if entities.product_name:
+            return "护肤"  # 简化：默认护肤，实际应按商品库查
+        if entities.issue_type:
+            return entities.issue_type
+        return ""
 
     def _check_escalation(self, emotion: EmotionResult,
                           semantic: SemanticResult,
