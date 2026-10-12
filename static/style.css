@@ -253,3 +253,12 @@ body {
 .sources { margin-top: 8px; padding: 8px 10px; background: #f8fafc; border-left: 3px solid #6366f1; border-radius: 4px; }
 .sources-title { font-size: 11px; color: #6366f1; font-weight: 600; margin-bottom: 4px; }
 .source-item { font-size: 12px; color: #64748b; line-height: 1.6; }
+
+/* 统一页面导航 */
+.page-nav { display: flex; gap: 4px; margin-left: auto; margin-right: 12px; }
+.page-nav a {
+  color: #64748b; text-decoration: none; font-size: 13px;
+  padding: 6px 12px; border-radius: 6px; transition: all .2s; white-space: nowrap;
+}
+.page-nav a:hover { background: #f1f5f9; color: #334155; }
+.page-nav a.active { background: #eff6ff; color: #2563eb; font-weight: 600; }

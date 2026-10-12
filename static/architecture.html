@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技术架构 - 美妆电商智能客服</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #1f2937; line-height: 1.6; }
+.nav { background: #001529; color: #fff; padding: 0 24px; display: flex; align-items: center; height: 56px; position: sticky; top: 0; z-index: 10; }
+.nav .brand { font-weight: 700; font-size: 16px; margin-right: 32px; }
+.nav .brand small { font-weight: 400; opacity: .55; font-size: 12px; margin-left: 8px; }
+.nav a { color: rgba(255,255,255,.75); text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; transition: all .2s; }
+.nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+.nav a.active { background: #1890ff; color: #fff; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+.hero { text-align: center; margin-bottom: 40px; }
+.hero h1 { font-size: 30px; margin-bottom: 10px; }
+.hero p { color: #6b7280; font-size: 15px; }
+.section { margin-bottom: 40px; }
+.section > h2 { font-size: 20px; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #1890ff; }
+.cards3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.pcard { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.pcard .num { display: inline-block; width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 50%; background: #e6f4ff; color: #1890ff; font-weight: 700; margin-bottom: 12px; }
+.pcard h3 { font-size: 17px; margin-bottom: 8px; }
+.pcard .desc { color: #6b7280; font-size: 13px; margin-bottom: 14px; }
+.pcard ul { list-style: none; }
+.pcard li { font-size: 13px; padding: 5px 0 5px 18px; position: relative; color: #374151; }
+.pcard li::before { content: '✓'; position: absolute; left: 0; color: #52c41a; font-weight: 700; }
+.pcard .link { display: inline-block; margin-top: 14px; color: #1890ff; text-decoration: none; font-size: 13px; font-weight: 600; }
+.pcard .link:hover { text-decoration: underline; }
+.arch { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.layer { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+.layer .ltitle { font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 6px 14px; border-radius: 6px; font-size: 13px; background: #f3f4f6; color: #374151; }
+.chip.blue { background: #e6f4ff; color: #0958d9; }
+.chip.green { background: #f6ffed; color: #389e0d; }
+.chip.purple { background: #f9f0ff; color: #722ed1; }
+.chip.orange { background: #fff7e6; color: #d46b08; }
+.arrow { text-align: center; color: #d1d5db; font-size: 18px; margin: -4px 0 8px; }
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.flow .step { background: #e6f4ff; color: #0958d9; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+.flow .arr { color: #9ca3af; }
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+th, td { padding: 12px 16px; text-align: left; font-size: 13px; border-bottom: 1px solid #f3f4f6; }
+th { background: #fafafa; color: #6b7280; font-size: 12px; font-weight: 600; }
+code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #c41d7f; font-family: ui-monospace, Menlo, monospace; }
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.stat { background: #fff; border-radius: 10px; padding: 18px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.stat .v { font-size: 26px; font-weight: 700; color: #1890ff; }
+.stat .l { font-size: 12px; color: #6b7280; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="nav">
+  <div class="brand">美妆电商智能客服<small>系统</small></div>
+  <a href="/">客户问答</a>
+  <a href="/admin">运营后台</a>
+  <a href="/architecture" class="active">技术架构</a>
+  <a href="/dashboard">数据看板</a>
+  <a href="/docs" target="_blank">API 文档</a>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>系统架构总览</h1>
+    <p>全链路 AI 客服系统 · 客户问答 + 运营后台 + 技术架构</p>
+  </div>
+
+  <!-- 三大板块 -->
+  <div class="section">
+    <h2>三大板块</h2>
+    <div class="cards3">
+      <div class="pcard">
+        <div class="num">1</div>
+        <h3>客户问答效果</h3>
+        <div class="desc">客户咨询 → 智能路由 → 知识检索 → 业务查询 → 人工接待</div>
+        <ul>
+          <li>三级理解：情感识别 / 语义分类 / 实体提取</li>
+          <li>智能路由：16 类意图分流到对应业务</li>
+          <li>混合检索：关键词 + 向量 + 重排，带知识来源</li>
+          <li>业务查询：订单 / 物流 / 库存 / 退款</li>
+          <li>人工接待：转人工、客服接管、会话回复</li>
+        </ul>
+        <a class="link" href="/">进入客户问答 →</a>
+      </div>
+      <div class="pcard">
+        <div class="num">2</div>
+        <h3>运营后台功能</h3>
+        <div class="desc">客户、商品、库存、订单、支付、物流、退款、用户、角色、配置</div>
+        <ul>
+          <li>商品与库存管理（含低库存预警）</li>
+          <li>订单 / 支付 / 物流 / 退款全流程</li>
+          <li>客户画像与标签</li>
+          <li>客服工作台：账号、接待范围、工单</li>
+          <li>知识库管理：切片 / 向量化 / 版本 / 回滚</li>
+          <li>问题排查：链路追踪、未解决问题</li>
+        </ul>
+        <a class="link" href="/admin">进入运营后台 →</a>
+      </div>
+      <div class="pcard">
+        <div class="num">3</div>
+        <h3>技术架构</h3>
+        <div class="desc">FastAPI + 三级流水线 + 混合检索 + 可观测性</div>
+        <ul>
+          <li>FastAPI 异步服务 + 中间件体系</li>
+          <li>三级处理流水线（可合并为单次调用）</li>
+          <li>LongCat 大模型（OpenAI 兼容）</li>
+          <li>内存 / PostgreSQL / Redis 三模式存储</li>
+          <li>Prometheus 指标 + 结构化日志</li>
+          <li>275 个自动化测试 + CI</li>
+        </ul>
+        <a class="link" href="#arch">查看架构图 ↓</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 运行指标 -->
+  <div class="section">
+    <h2>系统规模</h2>
+    <div class="stat-row">
+      <div class="stat"><div class="v">5,400+</div><div class="l">核心代码行数</div></div>
+      <div class="stat"><div class="v">275</div><div class="l">自动化测试</div></div>
+      <div class="stat"><div class="v">113</div><div class="l">API 接口</div></div>
+      <div class="stat"><div class="v">11</div><div class="l">业务模块</div></div>
+      <div class="stat"><div class="v">4</div><div class="l">前端页面</div></div>
+    </div>
+  </div>
+
+  <!-- 架构图 -->
+  <div class="section" id="arch">
+    <h2>分层架构</h2>
+    <div class="arch">
+      <div class="layer">
+        <div class="ltitle">接入层 · Access</div>
+        <div class="chips">
+          <span class="chip blue">聊天界面 /</span>
+          <span class="chip blue">运营控制台 /admin</span>
+          <span class="chip blue">数据看板 /dashboard</span>
+          <span class="chip blue">REST API /api/*</span>
+          <span class="chip blue">SSE 流式 /api/chat/stream</span>
+          <span class="chip blue">飞书 / Webhook</span>
+        </div>
+      </div>
+      <div class="arrow">▼</div>
+      <div class="layer">
+        <div class="ltitle">中间件层 · Middleware</div>
+        <div class="chips">
+          <span class="chip orange">API Key 认证</span>
+          <span class="chip orange">滑动窗口限流</span>
+          <span class="chip orange">Prometheus 指标</span>
+          <span class="chip orange">全局异常处理</span>
+          <span class="chip orange">Request ID 追踪</span>
+        </div>
+      </div>
+      <div class="arrow">▼</div>
+      <div class="layer">
+        <div class="ltitle">Agent 引擎层 · Core</div>
+        <div class="chips">
+          <span class="chip purple">三级流水线</span>
+          <span class="chip purple">检索增强引擎</span>
+          <span class="chip purple">大促处理器</span>
+          <span class="chip purple">运营操作</span>
+          <span class="chip purple">业务看板</span>
+          <span class="chip purple">工作流引擎</span>
+          <span class="chip purple">链路记录</span>
+          <span class="chip purple">人工客服</span>
+          <span class="chip purple">运营后台</span>
+          <span class="chip purple">知识库管理</span>
+        </div>
+      </div>
+      <div class="arrow">▼</div>
+      <div class="layer">
+        <div class="ltitle">能力层 · Pipeline & Retrieval</div>
+        <div class="chips">
+          <span class="chip green">情感识别（规则 + LLM 融合）</span>
+          <span class="chip green">语义分类（16 意图）</span>
+          <span class="chip green">实体提取（正则 + LLM）</span>
+          <span class="chip green">关键词召回</span>
+          <span class="chip green">向量召回</span>
+          <span class="chip green">RRF 融合</span>
+          <span class="chip green">重排</span>
+        </div>
+      </div>
+      <div class="arrow">▼</div>
+      <div class="layer">
+        <div class="ltitle">数据层 · Data</div>
+        <div class="chips">
+          <span class="chip">内存模式</span>
+          <span class="chip">PostgreSQL + pgvector</span>
+          <span class="chip">Redis 缓存</span>
+          <span class="chip">Alembic 迁移</span>
+          <span class="chip">LongCat 大模型</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 客户问答流程 -->
+  <div class="section">
+    <h2>客户问答数据流</h2>
+    <div class="flow">
+      <span class="step">客户消息</span><span class="arr">→</span>
+      <span class="step">情感识别</span><span class="arr">→</span>
+      <span class="step">语义分类</span><span class="arr">→</span>
+      <span class="step">实体提取</span><span class="arr">→</span>
+      <span class="step">业务查询</span><span class="arr">→</span>
+      <span class="step">混合检索</span><span class="arr">→</span>
+      <span class="step">生成回复</span><span class="arr">→</span>
+      <span class="step">转人工判断</span>
+    </div>
+  </div>
+
+  <!-- 功能模块 -->
+  <div class="section">
+    <h2>功能模块清单</h2>
+    <table>
+      <thead><tr><th>模块</th><th>文件</th><th>职责</th></tr></thead>
+      <tbody>
+        <tr><td>核心引擎</td><td><code>agent_engine.py</code></td><td>编排流水线、整合全部子模块</td></tr>
+        <tr><td>情感识别</td><td><code>layers/emotion_layer.py</code></td><td>规则 + LLM 双路融合</td></tr>
+        <tr><td>语义分类</td><td><code>layers/semantic_layer.py</code></td><td>16 类意图识别 + 紧急度</td></tr>
+        <tr><td>实体提取</td><td><code>layers/entity_layer.py</code></td><td>订单号/手机号/金额等</td></tr>
+        <tr><td>检索增强</td><td><code>modules/retrieval_engine.py</code></td><td>混合检索 + 重排 + 来源</td></tr>
+        <tr><td>美妆知识库</td><td><code>modules/beauty_knowledge.py</code></td><td>肤质/成分/产品推荐</td></tr>
+        <tr><td>大促处理</td><td><code>modules/promotion_handler.py</code></td><td>预售/满减/秒杀/话术</td></tr>
+        <tr><td>运营操作</td><td><code>modules/operations_manager.py</code></td><td>订单/物流/退货/库存</td></tr>
+        <tr><td>业务看板</td><td><code>modules/metrics_dashboard.py</code></td><td>GMV/转化/满意度</td></tr>
+        <tr><td>工作流引擎</td><td><code>modules/workflow_engine.py</code></td><td>流程编排/条件分支</td></tr>
+        <tr><td>链路记录</td><td><code>modules/trace_recorder.py</code></td><td>节点/模型IO/检索快照</td></tr>
+        <tr><td>人工客服</td><td><code>modules/human_service.py</code></td><td>账号/接管/工单/接待范围</td></tr>
+        <tr><td>运营后台</td><td><code>modules/admin_service.py</code></td><td>10 类实体 CRUD</td></tr>
+        <tr><td>知识库管理</td><td><code>modules/kb_manager.py</code></td><td>切片/向量化/版本/回滚</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

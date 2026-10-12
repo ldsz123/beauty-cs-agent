@@ -535,6 +535,12 @@ async def serve_admin():
     return FileResponse("static/admin.html")
 
 
+@app.get("/architecture", include_in_schema=False)
+async def serve_architecture():
+    """技术架构"""
+    return FileResponse("static/architecture.html")
+
+
 @app.delete("/api/session/{session_id}")
 async def reset_session(session_id: str):
     """重置会话（新会话按钮）"""

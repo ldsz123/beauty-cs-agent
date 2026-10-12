@@ -1,16 +1,17 @@
 """
 API Key 认证中间件
-所有 /api/* 端点（除 /api/health）需要 X-API-Key 请求头
+- 内置页面（同源 UI）免认证，方便自带控制台使用
+- 外部程序化调用需携带 X-API-Key
 """
 import os
+import json
 import secrets
-from fastapi import Request, HTTPException, status
-from fastapi.security import APIKeyHeader
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from loguru import logger
 
 API_KEY_NAME = "X-API-Key"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 
 def get_valid_api_keys() -> set[str]:
@@ -24,41 +25,49 @@ def get_valid_api_keys() -> set[str]:
 class APIKeyAuthMiddleware(BaseHTTPMiddleware):
     """API Key 认证中间件"""
 
-    def __init__(self, app, exclude_paths: list[str] = None):
+    # 免认证路径
+    EXCLUDE_PREFIXES = ("/api/health", "/metrics", "/docs", "/openapi.json", "/redoc")
+    EXCLUDE_PATHS = ("/", "/dashboard", "/admin", "/architecture")
+
+    def __init__(self, app):
         super().__init__(app)
-        self.exclude_paths = exclude_paths or ["/api/health", "/api/health/ready", "/metrics", "/docs", "/openapi.json", "/redoc"]
 
     async def dispatch(self, request: Request, call_next):
         path = request.scope.get("path", "")
 
-        # 跳过不需要认证的路径
-        if any(path.startswith(p) for p in self.exclude_paths):
+        # 静态资源与页面
+        if path.startswith("/static") or path in self.EXCLUDE_PATHS:
             return await call_next(request)
 
-        # 静态页面和首页不需要认证
-        if path.startswith("/static") or path in ("/", "/dashboard", "/admin"):
+        # 免认证接口
+        if any(path.startswith(p) for p in self.EXCLUDE_PREFIXES):
+            return await call_next(request)
+
+        valid_keys = get_valid_api_keys()
+        # 未配置 Key 时放行（开发模式）
+        if not valid_keys:
             return await call_next(request)
 
         api_key = request.headers.get(API_KEY_NAME)
-        valid_keys = get_valid_api_keys()
-
-        # 如果没有配置 API Keys，则跳过认证（开发模式）
-        if not valid_keys:
-            logger.warning("API_KEYS not configured, skipping authentication")
+        if api_key and api_key in valid_keys:
             return await call_next(request)
 
+        # 内置页面（同源 UI）请求免认证：Referer/Origin 主机与请求主机一致
+        host = request.headers.get("host", "")
+        ref = request.headers.get("referer") or request.headers.get("origin") or ""
+        if host and ref and host in ref:
+            return await call_next(request)
+
+        # 认证失败：直接返回 JSON（中间件中不能抛 HTTPException）
         if not api_key:
-            logger.warning(f"Missing API key from {request.client.host if request.client else 'unknown'}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Missing X-API-Key header",
+            logger.warning(f"Missing API key: {path}")
+            return JSONResponse(
+                status_code=401,
+                content={"error": {"code": "AUTH_ERROR", "message": "Missing X-API-Key header"}},
             )
 
-        if not secrets.compare_digest(api_key, api_key) or api_key not in valid_keys:
-            logger.warning(f"Invalid API key from {request.client.host if request.client else 'unknown'}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid API key",
-            )
-
-        return await call_next(request)
+        logger.warning(f"Invalid API key: {path}")
+        return JSONResponse(
+            status_code=403,
+            content={"error": {"code": "AUTH_ERROR", "message": "Invalid API key"}},
+        )
