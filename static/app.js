@@ -110,12 +110,45 @@ function addMessage(role, content, meta) {
       });
       body.appendChild(srcBox);
     }
+
+    // 反馈按钮
+    if (meta.trace_id) {
+      var fb = document.createElement('div');
+      fb.className = 'feedback-row';
+      fb.dataset.traceId = meta.trace_id;
+      var up = document.createElement('button');
+      up.className = 'fb-btn';
+      up.textContent = '👍 有帮助';
+      up.onclick = function () { sendFeedback(meta.trace_id, 'up', fb); };
+      var down = document.createElement('button');
+      down.className = 'fb-btn';
+      down.textContent = '👎 没帮助';
+      down.onclick = function () { sendFeedback(meta.trace_id, 'down', fb); };
+      fb.appendChild(up);
+      fb.appendChild(down);
+      body.appendChild(fb);
+    }
   }
 
   row.appendChild(avatar);
   row.appendChild(body);
   chatBox.appendChild(row);
   chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// ===== 反馈 =====
+async function sendFeedback(traceId, rating, rowEl) {
+  try {
+    await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trace_id: traceId, rating: rating, session_id: sessionId })
+    });
+    rowEl.innerHTML = '<span class="fb-done">' +
+      (rating === 'up' ? '✅ 感谢您的反馈！' : '📝 已记录，我们会改进') + '</span>';
+  } catch (e) {
+    rowEl.innerHTML = '<span class="fb-done">反馈提交失败</span>';
+  }
 }
 
 // ===== 打字中 =====
@@ -165,7 +198,8 @@ async function sendMessage() {
       emotion: data.emotion ? data.emotion.type : null,
       intent: data.intent,
       time: data.processing_time_ms,
-      sources: data.sources
+      sources: data.sources,
+      trace_id: data.trace_id
     });
 
     if (data.need_human) {

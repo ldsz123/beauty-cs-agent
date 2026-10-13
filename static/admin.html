@@ -74,7 +74,9 @@ tr:hover td { background: #fafcff; }
       <div class="menu-item" data-panel="customers">👥 客户管理</div>
       <div class="menu-item" data-panel="workbench">🎧 客服工作台</div>
       <div class="menu-item" data-panel="kb">📚 知识库管理</div>
+      <div class="menu-item" data-panel="routing">🧭 智能路由</div>
       <div class="menu-item" data-panel="traces">🔍 问题排查</div>
+      <div class="menu-item" data-panel="feedback">💬 用户反馈</div>
       <div class="menu-item" data-panel="system">⚙️ 用户与配置</div>
     </div>
   </div>
@@ -110,7 +112,8 @@ let currentPanel = 'overview';
 const PANEL_TITLES = {
   overview: '总览', products: '商品管理', inventory: '库存管理', orders: '订单管理',
   refunds: '退款管理', customers: '客户管理', workbench: '客服工作台',
-  kb: '知识库管理', traces: '问题排查', system: '用户与配置'
+  kb: '知识库管理', routing: '智能路由', traces: '问题排查',
+  feedback: '用户反馈', system: '用户与配置'
 };
 
 async function api(path, opts) {
@@ -592,6 +595,108 @@ async function viewTrace(tid) {
   openModal('链路详情 ' + tid, [], null, html);
 }
 
+// ============ 智能路由 ============
+async function renderRouting() {
+  const rules = await api('/api/routing/rules');
+  const stats = await api('/api/routing/stats');
+  if (!rules) return '<div class="empty">无法加载</div>';
+
+  const routeRows = Object.entries(rules.routes).map(([k, v]) => `
+    <tr>
+      <td><b>${esc(v.name)}</b><br><code style="font-size:11px">${k}</code></td>
+      <td style="font-size:12px;color:#666">${esc(v.desc)}</td>
+      <td style="font-size:11px">${(v.intents || []).map(i => `<span class="tag">${esc(i)}</span>`).join('')}</td>
+    </tr>`).join('');
+
+  const guardRows = (rules.guards || []).map(g => `
+    <tr><td>${esc(g.name)}</td><td style="font-size:12px">${esc(g.desc)}</td></tr>`).join('');
+
+  const dist = (stats && stats.distribution) || {};
+  const total = (stats && stats.total) || 0;
+  const distRows = Object.entries(dist).map(([k, v]) => `
+    <tr><td>${esc(k)}</td><td>${v}</td><td>${total ? (v / total * 100).toFixed(1) : 0}%</td></tr>`).join('');
+
+  return `
+    <div class="cards">
+      <div class="card"><div class="label">累计路由次数</div><div class="value">${total}</div></div>
+      <div class="card"><div class="label">路由类型</div><div class="value">${Object.keys(rules.routes).length}</div></div>
+      <div class="card"><div class="label">白名单动作</div><div class="value">${(rules.allowed_actions || []).length}</div></div>
+      <div class="card"><div class="label">守卫规则</div><div class="value">${(rules.guards || []).length}</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="routeTest" placeholder="输入一句话测试路由，如：帮我查订单PDD-20240101-ABCD" style="width:420px">
+      <button onclick="testRoute()">试算路由</button>
+    </div>
+    <div id="routeResult"></div>
+
+    <h3 style="margin:16px 0 10px;font-size:15px">路由类型</h3>
+    <table><thead><tr><th>路由</th><th>说明</th><th>允许意图</th></tr></thead>
+    <tbody>${routeRows}</tbody></table>
+
+    <h3 style="margin:20px 0 10px;font-size:15px">守卫规则（确定性，优先于模型）</h3>
+    <table><thead><tr><th>规则</th><th>说明</th></tr></thead>
+    <tbody>${guardRows}</tbody></table>
+
+    <h3 style="margin:20px 0 10px;font-size:15px">路由分布</h3>
+    <table><thead><tr><th>路由</th><th>次数</th><th>占比</th></tr></thead>
+    <tbody>${distRows || '<tr><td colspan="3" class="empty">暂无数据</td></tr>'}</tbody></table>`;
+}
+
+async function testRoute() {
+  const msg = $('routeTest').value.trim();
+  if (!msg) return;
+  const r = await api('/api/routing/decide?message=' + encodeURIComponent(msg), {method: 'POST'});
+  if (!r) return;
+  $('routeResult').innerHTML = `
+    <div style="background:#fff;border-radius:8px;padding:16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <div style="font-size:13px;line-height:2">
+        <b>路由：</b>${badge(r.route, 'blue')} &nbsp;
+        <b>意图：</b>${badge(r.intent, 'green')} &nbsp;
+        <b>判定来源：</b>${esc(r.decided_by)}<br>
+        ${r.order_id ? '<b>订单号：</b>' + esc(r.order_id) + '<br>' : ''}
+        ${r.product_sku ? '<b>SKU：</b>' + esc(r.product_sku) + '<br>' : ''}
+        ${r.product_field && r.product_field !== 'info' ? '<b>商品字段：</b>' + esc(r.product_field) + '<br>' : ''}
+        ${r.action ? '<b>动作：</b>' + badge(r.action, 'orange') + '<br>' : ''}
+        ${r.question ? '<b>追问：</b>' + esc(r.question) + '<br>' : ''}
+        <b>理由：</b>${esc(r.reason)}
+      </div>
+    </div>`;
+}
+
+// ============ 用户反馈 ============
+async function renderFeedback() {
+  const stats = await api('/api/feedback/stats');
+  const items = await api('/api/feedback?limit=50');
+  if (!items) return '<div class="empty">无法加载</div>';
+
+  const rows = (items.items || []).map(f => `
+    <tr>
+      <td>${f.rating === 'up' ? badge('👍 有帮助', 'green') : badge('👎 没帮助', 'red')}</td>
+      <td>${esc(f.user_message).slice(0, 40)}</td>
+      <td>${esc(f.intent)}</td>
+      <td>${esc(f.route)}</td>
+      <td style="color:#888;font-size:12px">${esc(f.comment) || '-'}</td>
+      <td>${new Date(f.created_at * 1000).toLocaleString()}</td>
+    </tr>`).join('');
+
+  const downIntents = Object.entries(stats?.down_by_intent || {})
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join('');
+
+  return `
+    <div class="cards">
+      <div class="card"><div class="label">反馈总数</div><div class="value">${stats?.total ?? 0}</div></div>
+      <div class="card"><div class="label">好评</div><div class="value ok">${stats?.up ?? 0}</div></div>
+      <div class="card"><div class="label">差评</div><div class="value warn">${stats?.down ?? 0}</div></div>
+      <div class="card"><div class="label">满意度</div><div class="value ok">${stats?.satisfaction_rate ?? 0}%</div></div>
+    </div>
+    ${downIntents ? `<h3 style="margin:8px 0 10px;font-size:15px">差评集中的意图（优化重点）</h3>
+    <table><thead><tr><th>意图</th><th>差评数</th></tr></thead><tbody>${downIntents}</tbody></table>` : ''}
+    <h3 style="margin:20px 0 10px;font-size:15px">反馈明细</h3>
+    <table><thead><tr><th>评价</th><th>用户问题</th><th>意图</th><th>路由</th><th>评论</th><th>时间</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="6" class="empty">暂无反馈</td></tr>'}</tbody></table>`;
+}
+
 // ============ 系统（用户/角色/配置） ============
 async function renderSystem() {
   const users = await api('/api/admin/users');
@@ -684,7 +789,8 @@ $('modalOk').onclick = async () => {
 const PANELS = {
   overview: renderOverview, products: renderProducts, inventory: renderInventory,
   orders: renderOrders, refunds: renderRefunds, customers: renderCustomers,
-  workbench: renderWorkbench, kb: renderKB, traces: renderTraces, system: renderSystem
+  workbench: renderWorkbench, kb: renderKB, routing: renderRouting,
+  traces: renderTraces, feedback: renderFeedback, system: renderSystem
 };
 
 render();

@@ -16,7 +16,7 @@ except ImportError:
     pass
 
 import yaml
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, status
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -284,6 +284,8 @@ class ChatResponse(BaseModel):
     session_id: str
     sources: list = []
     trace_id: str = ""
+    route: str = ""
+    routing: dict = {}
 
 
 class HealthResponse(BaseModel):
@@ -402,6 +404,8 @@ async def chat(request: ChatRequest):
         session_id=session_id,
         sources=response.sources,
         trace_id=response.trace_id,
+        route=response.route,
+        routing=response.routing,
     )
 
 
@@ -798,6 +802,77 @@ async def get_trace(trace_id: str):
     return trace
 
 
+# ========== 智能路由 ==========
+# ========== 用户反馈 ==========
+class FeedbackRequest(BaseModel):
+    trace_id: str
+    rating: str = Field(..., pattern="^(up|down)$")
+    comment: str = ""
+    session_id: str = ""
+
+
+@app.post("/api/feedback")
+async def submit_feedback(req: FeedbackRequest):
+    """提交回答反馈（点赞/点踩）"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+
+    # 从链路中补全上下文
+    trace = agent.trace_recorder.get_trace(req.trace_id) or {}
+    fb = agent.feedback_service.submit(
+        trace_id=req.trace_id,
+        rating=req.rating,
+        session_id=req.session_id or trace.get("session_id", ""),
+        comment=req.comment,
+        user_message=trace.get("user_message", ""),
+        reply=trace.get("final_reply", ""),
+        intent=trace.get("intent", ""),
+        route=trace.get("routing", {}).get("route", "") if isinstance(trace.get("routing"), dict) else "",
+    )
+    return fb.to_dict()
+
+
+@app.get("/api/feedback")
+async def list_feedback(limit: int = 50, rating: str = None):
+    """反馈列表"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    items = agent.feedback_service.list(limit=limit, rating=rating)
+    return {"total": len(items), "items": items}
+
+
+@app.get("/api/feedback/stats")
+async def feedback_stats():
+    """反馈统计"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.feedback_service.get_stats()
+
+
+@app.get("/api/routing/rules")
+async def routing_rules():
+    """路由规则说明"""
+    from .modules.routing_engine import RoutingEngine
+    return RoutingEngine.get_route_rules()
+
+
+@app.get("/api/routing/stats")
+async def routing_stats():
+    """路由分布统计"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.routing_engine.get_stats()
+
+
+@app.post("/api/routing/decide")
+async def routing_decide(message: str, session_id: str = None):
+    """路由试算（不产生实际回复）"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    decision = await agent.routing_engine.decide(message)
+    return decision.to_dict()
+
+
 @app.get("/api/unresolved")
 async def list_unresolved(limit: int = 50):
     """未解决问题列表（待人工跟进）"""
@@ -918,6 +993,100 @@ async def close_ticket(ticket_id: str, resolution: str = ""):
     if not agent:
         raise HTTPException(status_code=503, detail="Agent not initialized")
     return agent.human_service.close_ticket(ticket_id, resolution)
+
+
+# ========== WebSocket 实时通信 ==========
+@app.websocket("/ws/chat/{session_id}")
+async def ws_chat(websocket: WebSocket, session_id: str):
+    """客户实时会话通道"""
+    if not agent:
+        await websocket.close(code=1011)
+        return
+
+    await agent.realtime.connect_session(websocket, session_id)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            message = (data.get("message") or "").strip()
+            if not message:
+                continue
+
+            response = await agent.process(user_message=message, session_id=session_id)
+            await websocket.send_json({
+                "type": "reply",
+                "reply": response.reply,
+                "intent": response.semantic_result.primary_intent.value,
+                "emotion": response.emotion_result.emotion.value,
+                "route": response.route,
+                "need_human": response.need_human,
+                "sources": response.sources,
+                "trace_id": response.trace_id,
+                "processing_time_ms": response.processing_time_ms,
+            })
+    except WebSocketDisconnect:
+        agent.realtime.disconnect_session(websocket, session_id)
+    except Exception as e:
+        logger.warning(f"WS chat error ({session_id}): {e}")
+        agent.realtime.disconnect_session(websocket, session_id)
+
+
+@app.websocket("/ws/agent/{agent_id}")
+async def ws_agent(websocket: WebSocket, agent_id: str):
+    """客服实时工作台通道"""
+    if not agent:
+        await websocket.close(code=1011)
+        return
+
+    await agent.realtime.connect_agent(websocket, agent_id)
+    await websocket.send_json({"type": "connected", "agent_id": agent_id})
+    try:
+        while True:
+            data = await websocket.receive_json()
+            action = data.get("action")
+
+            if action == "takeover":
+                session_id = data.get("session_id", "")
+                result = agent.human_service.takeover(agent_id, session_id)
+                ag = agent.human_service.get_agent(agent_id)
+                if ag:
+                    await agent.realtime.notify_takeover(session_id, ag.to_dict())
+                await websocket.send_json({"type": "takeover_ok", "result": result})
+
+            elif action == "reply":
+                session_id = data.get("session_id", "")
+                content = data.get("content", "")
+                result = agent.human_service.agent_reply(agent_id, session_id, content)
+                ag = agent.human_service.get_agent(agent_id)
+                if ag and "error" not in result:
+                    await agent.realtime.notify_agent_reply(session_id, ag.to_dict(), content)
+                await websocket.send_json({"type": "reply_ok", "result": result})
+
+            elif action == "close":
+                ticket_id = data.get("ticket_id", "")
+                resolution = data.get("resolution", "")
+                ticket = agent.human_service.get_ticket(ticket_id)
+                session_id = ticket.session_id if ticket else ""
+                result = agent.human_service.close_ticket(ticket_id, resolution)
+                if session_id:
+                    await agent.realtime.notify_ticket_closed(session_id, resolution)
+                await websocket.send_json({"type": "close_ok", "result": result})
+
+            elif action == "ping":
+                await websocket.send_json({"type": "pong"})
+
+    except WebSocketDisconnect:
+        agent.realtime.disconnect_agent(websocket, agent_id)
+    except Exception as e:
+        logger.warning(f"WS agent error ({agent_id}): {e}")
+        agent.realtime.disconnect_agent(websocket, agent_id)
+
+
+@app.get("/api/realtime/stats")
+async def realtime_stats():
+    """实时连接统计"""
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    return agent.realtime.get_stats()
 
 
 # ========== 入口 ==========

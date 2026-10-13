@@ -69,8 +69,22 @@
 ### 运营管理后台
 统一管理：**客户、商品、库存、订单、支付、物流、退款、用户、角色、配置**（完整 CRUD）。
 
+### 智能路由
+规则优先（确定性、低延迟）的路由决策：**业务查询 / 知识问答 / 混合 / 澄清追问 / 人工 / 闲聊** 六类分流。
+- **白名单动作**：模型只能建议 `cancel_order` / `apply_refund`，服务器再校验权限
+- **一致性校验**：route 与 intent 必须匹配
+- **歧义守卫**：出现「有个订单」等指代但无订单号 → 先澄清；政策类问题优先走知识
+
 ### 问题分析与排查
-**提问路由链路记录**：查看一次回答经过的节点、模型输入输出、检索结果、业务查询；**未解决问题列表**跟进待处理会话。
+**提问路由链路记录**：查看一次回答经过的节点（含路由决策）、模型输入输出、检索结果、业务查询；**未解决问题列表**跟进待处理会话。
+
+### 用户反馈
+回答下方 **👍/👎 + 评论**，后台可查看满意度、**差评集中的意图**（优化重点）。
+
+### 实时通信
+WebSocket 通道：
+- 客户通道 `/ws/chat/{session_id}` — 实时对话
+- 客服通道 `/ws/agent/{agent_id}` — 工单通知、接管、消息互推
 
 ## 控制台页面
 
@@ -130,6 +144,27 @@ GET  /api/traces                      链路列表
 GET  /api/traces/{id}                 链路详情（节点/模型IO/检索/业务查询）
 GET  /api/traces/stats                链路统计
 GET  /api/unresolved                  未解决问题列表
+```
+
+### 智能路由
+```
+GET  /api/routing/rules               路由规则说明
+GET  /api/routing/stats               路由分布统计
+POST /api/routing/decide?message=     路由试算
+```
+
+### 用户反馈
+```
+POST /api/feedback                    提交反馈（up/down）
+GET  /api/feedback                    反馈列表
+GET  /api/feedback/stats              反馈统计（含差评归因）
+```
+
+### 实时通信
+```
+WS   /ws/chat/{session_id}            客户实时会话
+WS   /ws/agent/{agent_id}             客服工作台实时通道
+GET  /api/realtime/stats              实时连接统计
 ```
 
 ## 快速开始

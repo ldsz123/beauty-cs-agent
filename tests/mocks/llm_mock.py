@@ -22,6 +22,15 @@ class MockLLMClient:
         self.call_count += 1
         self.last_prompt = prompt
 
+        # 智能路由
+        if "智能路由专家" in prompt:
+            return {
+                "route": "hybrid", "intent": "order_query",
+                "order_id": None, "product_sku": None, "product_query": None,
+                "product_field": "info", "action": None, "question": None,
+                "knowledge_query": None,
+            }
+
         # 合并分析（单次调用返回情感+意图+实体）
         if "一次性分析" in prompt or "电商客服分析专家" in prompt:
             return {

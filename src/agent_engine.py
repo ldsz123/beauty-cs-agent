@@ -26,6 +26,9 @@ from .modules.trace_recorder import TraceRecorder
 from .modules.human_service import HumanServiceManager
 from .modules.admin_service import AdminService
 from .modules.kb_manager import KBManager
+from .modules.routing_engine import RoutingEngine
+from .modules.feedback_service import FeedbackService
+from .modules.realtime import ConnectionManager
 
 
 @dataclass
@@ -41,6 +44,8 @@ class AgentResponse:
     processing_time_ms: int = 0
     sources: list = field(default_factory=list)
     trace_id: str = ""
+    route: str = ""
+    routing: dict = field(default_factory=dict)
 
 
 class CustomerServiceAgent:
@@ -134,6 +139,15 @@ class CustomerServiceAgent:
         # 知识库管理（切片/版本/回滚）
         self.kb_manager = KBManager(knowledge_base=self.knowledge_base)
 
+        # 智能路由引擎
+        self.routing_engine = RoutingEngine(llm_client=config.get("llm_client"))
+
+        # 用户反馈服务
+        self.feedback_service = FeedbackService()
+
+        # 实时通信（WebSocket 推送）
+        self.realtime = ConnectionManager()
+
         # 是否将情感+意图+实体三级分析合并为单次 LLM 调用（降低延迟）
         self.combined_analysis = (
             config.get("llm_client") is not None
@@ -157,6 +171,17 @@ class CustomerServiceAgent:
 
         # 开始链路记录
         trace_id = self.trace_recorder.start_trace(session_id, user_message)
+
+        # ========== 智能路由 ==========
+        t0 = time.time()
+        routing = await self.routing_engine.decide(user_message, session.context)
+        self.trace_recorder.record_node(
+            trace_id, "routing",
+            input_summary={"message": user_message[:100]},
+            output_summary=routing.to_dict(),
+            duration_ms=int((time.time() - t0) * 1000),
+        )
+        logger.debug(f"Route: {routing.route}/{routing.intent} ({routing.decided_by})")
 
         # 图片理解（如有）
         image_info = None
@@ -244,31 +269,43 @@ class CustomerServiceAgent:
         logger.debug(f"Emotion={emotion_result.emotion.value} Intent={semantic_result.primary_intent.value} "
                      f"Entities(order_id={entities.order_id})")
 
-        # ========== 业务动作执行 ==========
-        t0 = time.time()
-        actions = await self.action_executor.execute(
-            intent=semantic_result.primary_intent,
-            entities=entities,
-            session=session.__dict__
-        )
-        self.trace_recorder.record_node(
-            trace_id, "action",
-            input_summary={"intent": semantic_result.primary_intent.value},
-            output_summary={"actions": actions},
-            duration_ms=int((time.time() - t0) * 1000),
-        )
-        for act in actions:
-            self.trace_recorder.record_business_query(
-                trace_id, act.get("action", "unknown"), act
+        # ========== 业务动作执行（仅业务/混合路由） ==========
+        actions = []
+        if routing.route in ("business", "hybrid"):
+            t0 = time.time()
+            actions = await self.action_executor.execute(
+                intent=semantic_result.primary_intent,
+                entities=entities,
+                session=session.__dict__
+            )
+            self.trace_recorder.record_node(
+                trace_id, "action",
+                input_summary={"intent": semantic_result.primary_intent.value, "route": routing.route},
+                output_summary={"actions": actions},
+                duration_ms=int((time.time() - t0) * 1000),
+            )
+            for act in actions:
+                self.trace_recorder.record_business_query(
+                    trace_id, act.get("action", "unknown"), act
+                )
+        else:
+            self.trace_recorder.record_node(
+                trace_id, "action",
+                input_summary={"route": routing.route},
+                output_summary={"actions": [], "skipped": True},
             )
 
         # ========== 知识检索（混合：关键词 + 向量 + 重排） ==========
+        from .modules.retrieval_engine import RetrievalResult
         t0 = time.time()
-        retrieval = await self.retrieval_engine.retrieve(
-            query=user_message,
-            intent=semantic_result.primary_intent,
-            entities=entities,
-        )
+        if routing.route in ("knowledge", "hybrid", "business", "chitchat"):
+            retrieval = await self.retrieval_engine.retrieve(
+                query=routing.knowledge_query or user_message,
+                intent=semantic_result.primary_intent,
+                entities=entities,
+            )
+        else:
+            retrieval = RetrievalResult(query=user_message, chunks=[], strategy="skipped")
         kb_context = retrieval.to_context()
         sources = retrieval.to_sources()
         self.trace_recorder.record_node(
@@ -307,16 +344,28 @@ class CustomerServiceAgent:
         
         # ========== 判断是否需要转人工 ==========
         need_human = self._check_escalation(emotion_result, semantic_result, session)
+        # 路由判定为人工
+        if routing.route == "human":
+            need_human = True
+        # 澄清路由：直接追问，不走转人工
+        if routing.route == "clarify" and routing.question:
+            reply = routing.question
+            need_human = False
 
         # 转人工时创建工单
         if need_human:
-            self.human_service.create_ticket(
+            ticket = self.human_service.create_ticket(
                 session_id=session_id,
                 reason=semantic_result.primary_intent.value,
                 category=self._infer_ticket_category(entities),
                 user_message=user_message,
                 emotion=emotion_result.emotion.value,
             )
+            # 实时通知在线客服
+            try:
+                await self.realtime.notify_new_ticket(ticket.to_dict())
+            except Exception as e:
+                logger.warning(f"Failed to notify agents: {e}")
 
         # 更新会话
         await self.session_manager.update_session(
@@ -365,6 +414,8 @@ class CustomerServiceAgent:
             processing_time_ms=processing_time,
             sources=sources,
             trace_id=trace_id,
+            route=routing.route,
+            routing=routing.to_dict(),
         )
     
     async def _analyze_combined(self, user_message, session):

@@ -158,6 +158,7 @@ code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 12p
       <div class="layer">
         <div class="ltitle">Agent 引擎层 · Core</div>
         <div class="chips">
+          <span class="chip purple">智能路由</span>
           <span class="chip purple">三级流水线</span>
           <span class="chip purple">检索增强引擎</span>
           <span class="chip purple">大促处理器</span>
@@ -166,6 +167,8 @@ code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 12p
           <span class="chip purple">工作流引擎</span>
           <span class="chip purple">链路记录</span>
           <span class="chip purple">人工客服</span>
+          <span class="chip purple">实时通信</span>
+          <span class="chip purple">用户反馈</span>
           <span class="chip purple">运营后台</span>
           <span class="chip purple">知识库管理</span>
         </div>
@@ -219,6 +222,7 @@ code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 12p
       <thead><tr><th>模块</th><th>文件</th><th>职责</th></tr></thead>
       <tbody>
         <tr><td>核心引擎</td><td><code>agent_engine.py</code></td><td>编排流水线、整合全部子模块</td></tr>
+        <tr><td>智能路由</td><td><code>modules/routing_engine.py</code></td><td>业务/知识/混合/澄清/人工/闲聊 分流 + 白名单动作 + 歧义守卫</td></tr>
         <tr><td>情感识别</td><td><code>layers/emotion_layer.py</code></td><td>规则 + LLM 双路融合</td></tr>
         <tr><td>语义分类</td><td><code>layers/semantic_layer.py</code></td><td>16 类意图识别 + 紧急度</td></tr>
         <tr><td>实体提取</td><td><code>layers/entity_layer.py</code></td><td>订单号/手机号/金额等</td></tr>
@@ -230,6 +234,8 @@ code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 12p
         <tr><td>工作流引擎</td><td><code>modules/workflow_engine.py</code></td><td>流程编排/条件分支</td></tr>
         <tr><td>链路记录</td><td><code>modules/trace_recorder.py</code></td><td>节点/模型IO/检索快照</td></tr>
         <tr><td>人工客服</td><td><code>modules/human_service.py</code></td><td>账号/接管/工单/接待范围</td></tr>
+        <tr><td>实时通信</td><td><code>modules/realtime.py</code></td><td>WebSocket 推送：工单通知/接管/消息互推</td></tr>
+        <tr><td>用户反馈</td><td><code>modules/feedback_service.py</code></td><td>点赞点踩 + 评论 + 差评归因</td></tr>
         <tr><td>运营后台</td><td><code>modules/admin_service.py</code></td><td>10 类实体 CRUD</td></tr>
         <tr><td>知识库管理</td><td><code>modules/kb_manager.py</code></td><td>切片/向量化/版本/回滚</td></tr>
       </tbody>
